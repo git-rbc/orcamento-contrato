@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__supabase__execute_sql",
+      "Bash(mkdir:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__apply_migration",
+      "Bash(npm run build:*)",
+      "Bash(rm:*)",
+      "Bash(npm run lint)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "mcp__gemini-cli__ask-gemini",
+      "mcp__supabase__list_branches",
+      "Bash(cd \"C:\\Users\\emers\\OneDrive\\Desktop\\Projetos\\gestaocontratosapp\")",
+      "Bash(rg:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm run dev:*)",
+      "Bash(find:*)",
+      "Bash(touch:*)",
+      "Bash(taskkill:*)",
+      "Bash(grep:*)",
+      "Bash(tasklist:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
+}
