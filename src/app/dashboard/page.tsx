@@ -32,6 +32,18 @@ export default function DashboardPage() {
     }
   }, [loading, user, router])
 
+  // Timeout para carregamento do perfil - redirecionar para login se falhar
+  useEffect(() => {
+    if (user && !userProfile && !loading) {
+      const timeout = setTimeout(() => {
+        console.log('[Dashboard] Timeout no carregamento do perfil, redirecionando para login')
+        router.replace('/login')
+      }, 10000) // Aumentado para 10 segundos para reduzir tentativas desnecessárias
+
+      return () => clearTimeout(timeout)
+    }
+  }, [user, userProfile, loading, router])
+
   // Buscar estatísticas com cache
   useEffect(() => {
     const fetchStats = async () => {
@@ -111,6 +123,64 @@ export default function DashboardPage() {
     }
   }, [user, userProfile])
 
+  // Listener para refresh customizado (para evitar reload completo)
+  useEffect(() => {
+    const handleRefresh = () => {
+      if (user && userProfile) {
+        // Re-executar fetchStats quando receber evento de refresh
+        const fetchStats = async () => {
+          try {
+            setLoadingStats(true)
+            
+            // Forçar busca de dados sem cache
+            const [clientesRes, servicosRes, produtosRes, contratosRes, espacosRes] = await Promise.all([
+              fetch('/api/clientes/stats'),
+              fetch('/api/servicos/stats'), 
+              fetch('/api/produtos/stats'),
+              fetch('/api/contratos/stats'),
+              fetch('/api/espacos/stats')
+            ])
+            
+            if (clientesRes.ok) {
+              const clientesData = await clientesRes.json()
+              setClientesCount(clientesData.data?.total || 0)
+            }
+            
+            if (servicosRes.ok) {
+              const servicosData = await servicosRes.json()
+              setServicosCount(servicosData.data?.total || 0)
+            }
+            
+            if (produtosRes.ok) {
+              const produtosData = await produtosRes.json()
+              setProdutosCount(produtosData?.total || 0)
+            }
+            
+            if (contratosRes.ok) {
+              const contratosData = await contratosRes.json()
+              setContratosCount(contratosData.data?.total || 0)
+            }
+            
+            if (espacosRes.ok) {
+              const espacosData = await espacosRes.json()
+              setEspacosCount(espacosData.data?.total || 0)
+            }
+            
+          } catch (error) {
+            console.error('Erro ao buscar estatísticas:', error)
+          } finally {
+            setLoadingStats(false)
+          }
+        }
+        
+        fetchStats()
+      }
+    }
+    
+    window.addEventListener('dashboard-refresh', handleRefresh)
+    return () => window.removeEventListener('dashboard-refresh', handleRefresh)
+  }, [user, userProfile])
+
   // Mostrar loading enquanto carrega ou enquanto busca perfil
   if (loading || (user && !userProfile)) {
     return (
@@ -130,7 +200,7 @@ export default function DashboardPage() {
     return null
   }
 
-  // Se tem usuário mas não tem perfil após carregar, mostrar erro amigável
+  // Se tem usuário mas não tem perfil, algo deu errado
   if (!userProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">

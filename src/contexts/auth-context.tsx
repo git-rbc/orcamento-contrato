@@ -85,67 +85,94 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let mounted = true
-    let isInitializing = true
+    
+    console.log('[AuthContext] Iniciando verificação de autenticação...')
 
-    console.log('[AuthContext] Configurando onAuthStateChange listener...')
+    // Função para verificar sessão inicial
+    const checkInitialSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const currentUser = session?.user ?? null
 
-    const handleAuthStateChange = async (event: string, session: any) => {
-      if (!mounted) {
-        console.log('[AuthContext] Componente desmontado, ignorando mudança de auth.')
-        return
-      }
+        if (!mounted) return
 
-      console.log(`[AuthContext] Evento de auth recebido: ${event}`)
-      
-      // Para INITIAL_SESSION, processar apenas uma vez
-      if (event === 'INITIAL_SESSION') {
-        if (!isInitializing) {
-          console.log('[AuthContext] INITIAL_SESSION já processado, ignorando')
-          return
-        }
-        isInitializing = false
-      }
-      
-      const currentUser = session?.user ?? null
-      
-      if (mounted) {
         setUser(currentUser)
-      }
-      
-      if (currentUser && mounted) {
-        console.log(`[AuthContext] Buscando perfil para: ${currentUser.email}`)
-        try {
-          const profile = await fetchUserProfile(currentUser.id)
-          if (mounted) {
-            if (profile) {
-              console.log(`[AuthContext] Perfil definido para: ${profile.nome}`)
-              setUserProfile(profile)
-            } else {
-              console.log('[AuthContext] Perfil não encontrado, limpando estado')
+
+        if (currentUser) {
+          console.log(`[AuthContext] Usuário encontrado: ${currentUser.email}`)
+          try {
+            const profile = await fetchUserProfile(currentUser.id)
+            if (mounted) {
+              if (profile) {
+                console.log(`[AuthContext] Perfil carregado: ${profile.nome}`)
+                setUserProfile(profile)
+              } else {
+                console.log('[AuthContext] Perfil não encontrado')
+                setUserProfile(null)
+              }
+            }
+          } catch (error) {
+            console.error('[AuthContext] Erro ao buscar perfil:', error)
+            if (mounted) {
               setUserProfile(null)
             }
           }
-        } catch (error) {
-          console.error('[AuthContext] Erro ao buscar perfil:', error)
-          if (mounted) {
-            setUserProfile(null)
-          }
+        } else {
+          console.log('[AuthContext] Nenhum usuário autenticado')
+          setUserProfile(null)
         }
-      } else if (mounted) {
-        console.log('[AuthContext] Nenhum usuário, limpando perfil.')
-        setUserProfile(null)
-      }
 
-      if (mounted) {
-        console.log('[AuthContext] Verificação concluída, setLoading(false).')
-        setLoading(false)
+        if (mounted) {
+          console.log('[AuthContext] Verificação inicial concluída')
+          setLoading(false)
+        }
+      } catch (error) {
+        console.error('[AuthContext] Erro na verificação inicial:', error)
+        if (mounted) {
+          setUser(null)
+          setUserProfile(null)
+          setLoading(false)
+        }
       }
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
+    // Verificar sessão inicial
+    checkInitialSession()
+
+    // Listener simplificado para mudanças de auth (não recarrega perfil)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return
+      
+      console.log(`[AuthContext] Evento de auth: ${event}`)
+      
+      // Ignorar INITIAL_SESSION pois já foi processado acima
+      if (event === 'INITIAL_SESSION') return
+      
+      // Para outros eventos, apenas atualizar o usuário
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+      
+      // Se é logout, limpar perfil
+      if (event === 'SIGNED_OUT') {
+        setUserProfile(null)
+      }
+      
+      // Para login, buscar perfil
+      if (event === 'SIGNED_IN' && currentUser) {
+        fetchUserProfile(currentUser.id).then(profile => {
+          if (mounted) {
+            setUserProfile(profile)
+          }
+        }).catch(error => {
+          console.error('[AuthContext] Erro ao buscar perfil após login:', error)
+          if (mounted) {
+            setUserProfile(null)
+          }
+        })
+      }
+    })
 
     return () => {
-      console.log('[AuthContext] Limpando onAuthStateChange listener.')
       mounted = false
       subscription.unsubscribe()
     }

@@ -27,6 +27,7 @@ import {
   Building2,
   Tag
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 interface SidebarProps {
   className?: string;
@@ -473,15 +474,33 @@ function SidebarComponent({ className }: SidebarProps) {
 
         {/* Footer */}
         <div className="p-4 border-t border-border">
-          <Button
-            variant="ghost"
-            onClick={handleSignOut}
-            className={`w-full ${collapsed ? 'px-2' : 'justify-start'}`}
-            title={collapsed ? 'Sair' : undefined}
-          >
-            <LogOut className="h-4 w-4" />
-            {!collapsed && <span className="ml-2">Sair</span>}
-          </Button>
+          {collapsed ? (
+            <div className="flex flex-col space-y-2 items-center">
+              <ThemeToggle />
+              <Button
+                variant="ghost"
+                onClick={handleSignOut}
+                className="px-2"
+                title="Sair"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <ThemeToggle />
+              </div>
+              <Button
+                variant="ghost"
+                onClick={handleSignOut}
+                className="w-full justify-start"
+              >
+                <LogOut className="h-4 w-4" />
+                <span className="ml-2">Sair</span>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

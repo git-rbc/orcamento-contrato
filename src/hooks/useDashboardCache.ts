@@ -2,14 +2,15 @@ import { useCallback } from 'react';
 import { dashboardCache, CACHE_KEYS } from '@/lib/cache';
 
 export const useDashboardCache = () => {
-  // Função para forçar atualização dos dados
+  // Função para forçar atualização dos dados (sem reload para reduzir uso de CPU)
   const refreshStats = useCallback(async () => {
     try {
       // Limpar cache existente
       dashboardCache.clearAll();
       
-      // Recarregar a página para buscar dados frescos
-      window.location.reload();
+      // Criar evento customizado para notificar componentes sobre atualização
+      const event = new CustomEvent('dashboard-refresh');
+      window.dispatchEvent(event);
     } catch (error) {
       console.error('Erro ao atualizar estatísticas:', error);
     }

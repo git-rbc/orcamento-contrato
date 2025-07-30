@@ -21,7 +21,7 @@ interface PropostaSecaoProps {
 export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana, numPessoas }: PropostaSecaoProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
-  const [showDescontoColumn, setShowDescontoColumn] = useState(false);
+  const [itemsComDescontoVisivel, setItensComDescontoVisivel] = useState<Set<string>>(new Set());
   const [seguimentoFiltro, setSeguimentoFiltro] = useState<'alimentos' | 'bebidas' | 'decoracao' | 'itens_extra' | null>(null);
 
   const addItem = () => setItems([...items, { 
@@ -188,7 +188,8 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
           <thead>
             <tr className="border-b bg-zinc-100 dark:bg-zinc-900/40">
               <th className="text-left px-3 py-2">Serviço/Produto</th>
-              {showDescontoColumn && <th className="text-right px-3 py-2 w-32">Desconto (%)</th>}
+              {itemsComDescontoVisivel.size > 0 && <th className="text-right px-3 py-2 w-32">Desconto (%)</th>}
+              {itemsComDescontoVisivel.size > 0 && <th className="text-right px-1 py-2 w-32"></th>}
               {shouldShowQuantityColumn() && <th className="text-right px-3 py-2 w-24">Qtde</th>}
               <th className="text-right px-3 py-2 w-32">Valor Total</th>
               <th className="px-1 py-2 w-8"></th>
@@ -214,13 +215,21 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
                               variant="outline"
                               size="sm" 
                               className="text-xs h-8 px-2"
-                              onClick={() => setShowDescontoColumn(!showDescontoColumn)}
+                              onClick={() => {
+                                const newSet = new Set(itemsComDescontoVisivel);
+                                if (newSet.has(item.id)) {
+                                  newSet.delete(item.id);
+                                } else {
+                                  newSet.add(item.id);
+                                }
+                                setItensComDescontoVisivel(newSet);
+                              }}
                             >
                               +
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>{showDescontoColumn ? 'Ocultar coluna de desconto' : 'Mostrar coluna de desconto'}</p>
+                            <p>{itemsComDescontoVisivel.has(item.id) ? 'Ocultar desconto deste item' : 'Mostrar desconto deste item'}</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -236,9 +245,9 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
                     )}
                   </div>
                 </td>
-                {showDescontoColumn && (
-                  <td className="px-3 py-1 text-right">
-                    {item.descontoPermitido > 0 ? (
+                {itemsComDescontoVisivel.size > 0 && (
+                  <td className="pr-1 pl-3 py-1 text-right">
+                    {itemsComDescontoVisivel.has(item.id) && item.descontoPermitido > 0 ? (
                       <Select
                         value={String(item.descontoAplicado)}
                         onValueChange={value => change(item.id, 'descontoAplicado', value)}
@@ -255,6 +264,17 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
                           )}
                         </SelectContent>
                       </Select>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">-</span>
+                    )}
+                  </td>
+                )}
+                {itemsComDescontoVisivel.size > 0 && (
+                  <td className="pl-1 pr-3 py-1 text-right">
+                    {itemsComDescontoVisivel.has(item.id) && item.descontoPermitido > 0 && item.descontoAplicado > 0 ? (
+                      <span className="text-sm font-medium text-red-600">
+                        -{(item.valorUnitario * item.quantidade * (item.descontoAplicado / 100)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </span>
                     ) : (
                       <span className="text-muted-foreground text-sm">-</span>
                     )}

@@ -6,10 +6,12 @@ import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Filter } from 'lucide-react';
-import { useState } from 'react';
-import { PropostaModal } from '@/components/propostas/proposta-modal';
-import { PropostasList } from '@/components/propostas/propostas-list';
-import { PropostasSearchModal } from '@/components/propostas/propostas-search-modal';
+import { useState, lazy, Suspense } from 'react';
+
+// Import dinâmico para reduzir bundle inicial
+const PropostaModal = lazy(() => import('@/components/propostas/proposta-modal').then(mod => ({ default: mod.PropostaModal })));
+const PropostasList = lazy(() => import('@/components/propostas/propostas-list').then(mod => ({ default: mod.PropostasList })));
+const PropostasSearchModal = lazy(() => import('@/components/propostas/propostas-search-modal').then(mod => ({ default: mod.PropostasSearchModal })));
 
 export default function PropostasPage() {
   const { userProfile, loading } = useAuth();
@@ -128,42 +130,58 @@ export default function PropostasPage() {
           </div>
           
           <TabsContent value="todas" className="mt-4">
-            <PropostasList onEditarProposta={handleEditarProposta} filtros={filtros} />
+            <Suspense fallback={<div className="flex justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>
+              <PropostasList onEditarProposta={handleEditarProposta} filtros={filtros} />
+            </Suspense>
           </TabsContent>
           
           <TabsContent value="rascunho" className="mt-4">
-            <PropostasList filtroStatus="rascunho" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            <Suspense fallback={<div className="flex justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>
+              <PropostasList filtroStatus="rascunho" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            </Suspense>
           </TabsContent>
           
           <TabsContent value="enviada" className="mt-4">
-            <PropostasList filtroStatus="enviada" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            <Suspense fallback={<div className="flex justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>
+              <PropostasList filtroStatus="enviada" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            </Suspense>
           </TabsContent>
           
           <TabsContent value="aceita" className="mt-4">
-            <PropostasList filtroStatus="aceita" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            <Suspense fallback={<div className="flex justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>
+              <PropostasList filtroStatus="aceita" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            </Suspense>
           </TabsContent>
           
           <TabsContent value="recusada" className="mt-4">
-            <PropostasList filtroStatus="recusada" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            <Suspense fallback={<div className="flex justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>
+              <PropostasList filtroStatus="recusada" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            </Suspense>
           </TabsContent>
           
           <TabsContent value="convertida" className="mt-4">
-            <PropostasList filtroStatus="convertida" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            <Suspense fallback={<div className="flex justify-center p-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div></div>}>
+              <PropostasList filtroStatus="convertida" onEditarProposta={handleEditarProposta} filtros={filtros} />
+            </Suspense>
           </TabsContent>
         </Tabs>
 
-        <PropostaModal 
-          open={open} 
-          onOpenChange={handleCloseModal}
-          propostaId={editandoPropostaId}
-        />
+        <Suspense fallback={null}>
+          <PropostaModal 
+            open={open} 
+            onOpenChange={handleCloseModal}
+            propostaId={editandoPropostaId}
+          />
+        </Suspense>
 
-        <PropostasSearchModal
-          open={searchModalOpen}
-          onOpenChange={setSearchModalOpen}
-          onApplyFilters={handleApplyFilters}
-          currentFilters={filtros}
-        />
+        <Suspense fallback={null}>
+          <PropostasSearchModal
+            open={searchModalOpen}
+            onOpenChange={setSearchModalOpen}
+            onApplyFilters={handleApplyFilters}
+            currentFilters={filtros}
+          />
+        </Suspense>
       </div>
     </DashboardLayout>
   );
