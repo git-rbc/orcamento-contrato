@@ -25,7 +25,8 @@ import {
   Box,
   PenSquare,
   Building2,
-  Tag
+  Tag,
+  Calendar
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 
@@ -80,6 +81,13 @@ const AVAILABLE_MENUS: MenuItem[] = [
     href: '/dashboard/espacos-eventos',
     icon: 'Building2',
     description: 'Espaços e ambientes para eventos'
+  },
+  {
+    title: 'Calendário',
+    slug: 'calendario',
+    href: '/dashboard/calendario',
+    icon: 'Calendar',
+    description: 'Gestão de reservas e disponibilidade'
   },
   {
     title: 'Contratos',
@@ -157,7 +165,8 @@ const iconMap: Record<string, any> = {
   Box,
   PenSquare,
   Building2,
-  Tag
+  Tag,
+  Calendar
 };
 
 // Componente para renderizar itens de menu (incluindo submenus)

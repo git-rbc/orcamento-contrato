@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge'
 import { useRouter } from 'next/navigation'
 import { Users, Package, FileText, Mail, Shield, Clock, RefreshCw, MapPin } from 'lucide-react'
 import Link from 'next/link'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { useEffect, useState } from 'react'
 import { dashboardCache } from '@/lib/cache'
 import { useDashboardCache } from '@/hooks/useDashboardCache'
@@ -221,8 +220,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
@@ -400,7 +398,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </DashboardLayout>
+    </div>
   )
 } 
