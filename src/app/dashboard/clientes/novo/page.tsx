@@ -1,6 +1,5 @@
 'use client'
 
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { ClienteForm } from '@/components/clientes/cliente-form'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -8,7 +7,6 @@ import Link from 'next/link'
 
 export default function NovoClientePage() {
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -29,6 +27,5 @@ export default function NovoClientePage() {
         {/* Formulário */}
         <ClienteForm mode="create" />
       </div>
-    </DashboardLayout>
   )
 } 

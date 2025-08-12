@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Edit, Trash2, Tag } from 'lucide-react';
 import { CupomModal } from '@/components/cupons/cupom-modal';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { CupomDesconto } from '@/types/database';
 import { toast } from 'sonner';
 
@@ -109,7 +108,6 @@ export default function CuponsPage() {
   };
 
   return (
-    <DashboardLayout>
       <div className="container mx-auto py-6">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -261,6 +259,5 @@ export default function CuponsPage() {
           cupom={cupomEditando}
         />
       </div>
-    </DashboardLayout>
   );
 }

@@ -7,7 +7,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -400,7 +399,6 @@ export default function UsuariosPage() {
   }
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -692,6 +690,5 @@ export default function UsuariosPage() {
         </CardContent>
       </Card>
     </div>
-    </DashboardLayout>
   );
 } 

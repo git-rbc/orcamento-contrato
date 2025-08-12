@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@/contexts/auth-context';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { ContratosMain } from '@/components/contratos/contratos-main';
 
 export default function ContratosPage() {
@@ -20,8 +19,6 @@ export default function ContratosPage() {
   }
 
   return (
-    <DashboardLayout>
       <ContratosMain />
-    </DashboardLayout>
   );
 }

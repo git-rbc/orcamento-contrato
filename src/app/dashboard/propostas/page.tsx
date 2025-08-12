@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Filter } from 'lucide-react';
@@ -54,7 +53,6 @@ export default function PropostasPage() {
   };
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -183,6 +181,5 @@ export default function PropostasPage() {
           />
         </Suspense>
       </div>
-    </DashboardLayout>
   );
 } 

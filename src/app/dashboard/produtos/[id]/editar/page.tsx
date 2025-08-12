@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -207,7 +206,6 @@ export default function EditarProdutoPage() {
 
   if (!produto) {
     return (
-      <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4">
             <h2 className="text-2xl font-bold">Produto não encontrado</h2>
@@ -218,12 +216,10 @@ export default function EditarProdutoPage() {
             </Button>
           </div>
         </div>
-      </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -534,6 +530,5 @@ export default function EditarProdutoPage() {
           </div>
         </form>
       </div>
-    </DashboardLayout>
   );
 } 

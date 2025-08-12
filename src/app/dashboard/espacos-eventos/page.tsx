@@ -23,7 +23,6 @@ import {
   Layers
 } from 'lucide-react';
 import Link from 'next/link';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
 
 export default function EspacosEventosPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -128,7 +127,6 @@ export default function EspacosEventosPage() {
   };
 
   return (
-    <DashboardLayout>
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -293,6 +291,5 @@ export default function EspacosEventosPage() {
         </CardContent>
       </Card>
     </div>
-    </DashboardLayout>
   );
 } 

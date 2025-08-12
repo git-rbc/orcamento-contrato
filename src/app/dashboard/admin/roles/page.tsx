@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -377,7 +376,6 @@ export default function RolesPage() {
   }
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -749,6 +747,5 @@ export default function RolesPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </DashboardLayout>
   );
 } 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
-import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { ClienteForm } from '@/components/clientes/cliente-form'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Loader2 } from 'lucide-react'
@@ -38,17 +37,14 @@ export default function EditarClientePage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </DashboardLayout>
     )
   }
 
   if (!cliente) {
     return (
-      <DashboardLayout>
         <div className="space-y-6">
           <div className="text-center">
             <h1 className="text-2xl font-bold">Cliente não encontrado</h1>
@@ -63,12 +59,10 @@ export default function EditarClientePage() {
             </Link>
           </div>
         </div>
-      </DashboardLayout>
     )
   }
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -89,6 +83,5 @@ export default function EditarClientePage() {
         {/* Formulário */}
         <ClienteForm mode="edit" cliente={cliente} />
       </div>
-    </DashboardLayout>
   )
 } 

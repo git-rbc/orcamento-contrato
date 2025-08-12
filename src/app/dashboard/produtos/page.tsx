@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/auth-context';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
 import { DataTable } from '@/components/ui/data-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -262,7 +261,6 @@ export default function ProdutosPage() {
   ];
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -421,6 +419,5 @@ export default function ProdutosPage() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
   );
 } 

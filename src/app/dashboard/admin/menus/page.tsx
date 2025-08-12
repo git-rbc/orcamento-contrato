@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -229,7 +228,6 @@ export default function AdminMenusPage() {
 
   if (!userProfile?.nivel_hierarquia || userProfile.nivel_hierarquia < 90) {
     return (
-      <DashboardLayout>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center space-y-4">
             <AlertTriangle className="h-16 w-16 text-yellow-500 mx-auto" />
@@ -239,12 +237,10 @@ export default function AdminMenusPage() {
             </p>
           </div>
         </div>
-      </DashboardLayout>
     );
   }
 
   return (
-    <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -530,6 +526,5 @@ export default function AdminMenusPage() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
   );
 } 

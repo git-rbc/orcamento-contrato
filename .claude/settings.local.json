@@ -33,7 +33,8 @@
       "mcp__playwright__browser_type",
       "mcp__playwright__browser_close",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
