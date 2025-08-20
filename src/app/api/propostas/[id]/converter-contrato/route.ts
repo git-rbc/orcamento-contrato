@@ -125,12 +125,30 @@ export async function POST(request: NextRequest, { params }: any) {
       }, { status: 500 });
     }
 
-    // Converter itens da proposta para contrato_servicos
+    // Função para processar itens recursivamente (incluindo subprodutos)
+    const processarItensRecursivo = (itens: any[]): any[] => {
+      const todosItens: any[] = [];
+      
+      for (const item of itens) {
+        if (item.valorUnitario > 0 && item.quantidade > 0) {
+          todosItens.push(item);
+          
+          // Processar subprodutos se existirem
+          if (item.subprodutos && item.subprodutos.length > 0) {
+            todosItens.push(...processarItensRecursivo(item.subprodutos));
+          }
+        }
+      }
+      
+      return todosItens;
+    };
+
+    // Converter itens da proposta para contrato_servicos (incluindo subprodutos)
     const todosItens = [
-      ...proposta.itens_alimentacao,
-      ...proposta.itens_bebidas,
-      ...proposta.itens_servicos,
-      ...proposta.itens_extras
+      ...processarItensRecursivo(proposta.itens_alimentacao || []),
+      ...processarItensRecursivo(proposta.itens_bebidas || []),
+      ...processarItensRecursivo(proposta.itens_servicos || []),
+      ...processarItensRecursivo(proposta.itens_extras || [])
     ];
 
     // ID do serviço genérico para produtos avulsos
@@ -140,45 +158,48 @@ export async function POST(request: NextRequest, { params }: any) {
     const servicosAgrupados = new Map();
     
     for (const item of todosItens) {
-      if (item.valorUnitario > 0 && item.quantidade > 0) {
-        // Se não tem servicoTemplateId, usar o serviço genérico
-        const servicoId = item.servicoTemplateId || SERVICO_PRODUTOS_AVULSOS_ID;
-        
-        if (!servicoId) {
-          console.warn('Item sem servicoTemplateId:', item);
-          continue;
-        }
+      // Se não tem servicoTemplateId, usar o serviço genérico
+      const servicoId = item.servicoTemplateId || SERVICO_PRODUTOS_AVULSOS_ID;
+      
+      if (!servicoId) {
+        console.warn('Item sem servicoTemplateId:', item);
+        continue;
+      }
 
-        // Calcular valor total do item (com descontos)
-        const valorBruto = item.valorUnitario * item.quantidade;
-        const descontoNormal = valorBruto * (item.descontoAplicado || 0) / 100;
-        let descontoCupom = 0;
-        
-        if (item.cupomAplicado) {
-          if (item.cupomAplicado.tipo_desconto === 'percentual') {
-            descontoCupom = (valorBruto - descontoNormal) * (item.cupomAplicado.valor_desconto / 100);
-          } else {
-            descontoCupom = Math.min(item.cupomAplicado.valor_desconto, valorBruto - descontoNormal);
-          }
-        }
-        
-        const valorTotal = valorBruto - descontoNormal - descontoCupom;
-
-        // Agrupar por servicoTemplateId
-        if (servicosAgrupados.has(servicoId)) {
-          const grupo = servicosAgrupados.get(servicoId);
-          grupo.quantidade += item.quantidade;
-          grupo.valor_total += valorTotal;
-          grupo.itens.push(item.descricao || item.nome || '');
+      // Calcular valor total do item individual (sem subprodutos, pois já foram processados separadamente)
+      const valorBruto = item.valorUnitario * item.quantidade;
+      const descontoNormal = valorBruto * (item.descontoAplicado || 0) / 100;
+      let descontoCupom = 0;
+      
+      if (item.cupomAplicado) {
+        if (item.cupomAplicado.tipo_desconto === 'percentual') {
+          descontoCupom = (valorBruto - descontoNormal) * (item.cupomAplicado.valor_desconto / 100);
         } else {
-          servicosAgrupados.set(servicoId, {
-            servico_id: servicoId,
-            quantidade: item.quantidade,
-            valor_unitario: item.valorUnitario,
-            valor_total: valorTotal,
-            itens: [item.descricao || item.nome || '']
-          });
+          descontoCupom = Math.min(item.cupomAplicado.valor_desconto, valorBruto - descontoNormal);
         }
+      }
+      
+      const valorTotal = valorBruto - descontoNormal - descontoCupom;
+
+      // Preparar descrição do item (incluindo informação se é subproduto)
+      const descricaoItem = item.isSubproduto 
+        ? `└ ${item.descricao}` 
+        : item.descricao || item.nome || '';
+
+      // Agrupar por servicoTemplateId
+      if (servicosAgrupados.has(servicoId)) {
+        const grupo = servicosAgrupados.get(servicoId);
+        grupo.quantidade += item.quantidade;
+        grupo.valor_total += valorTotal;
+        grupo.itens.push(descricaoItem);
+      } else {
+        servicosAgrupados.set(servicoId, {
+          servico_id: servicoId,
+          quantidade: item.quantidade,
+          valor_unitario: item.valorUnitario,
+          valor_total: valorTotal,
+          itens: [descricaoItem]
+        });
       }
     }
 

@@ -32,13 +32,13 @@ export function CalendarFilters({
 
   const handleClearFilters = () => {
     onFiltersChange({
-      espacoId: '',
-      status: '',
-      clienteId: ''
+      espacoId: 'todos',
+      status: 'todos',
+      clienteId: 'todos'
     });
   };
 
-  const hasActiveFilters = filters.espacoId || filters.status || filters.clienteId;
+  const hasActiveFilters = (filters.espacoId && filters.espacoId !== 'todos') || (filters.status && filters.status !== 'todos') || (filters.clienteId && filters.clienteId !== 'todos');
 
   return (
     <Card>
@@ -73,7 +73,7 @@ export function CalendarFilters({
               <SelectValue placeholder="Todos os espaços" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos os espaços</SelectItem>
+              <SelectItem value="todos">Todos os espaços</SelectItem>
               {espacos.map((espaco) => (
                 <SelectItem key={espaco.id} value={espaco.id}>
                   {espaco.nome}
@@ -94,7 +94,7 @@ export function CalendarFilters({
               <SelectValue placeholder="Todos os status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos os status</SelectItem>
+              <SelectItem value="todos">Todos os status</SelectItem>
               <SelectItem value="confirmado">Confirmado</SelectItem>
               <SelectItem value="pendente">Pendente</SelectItem>
               <SelectItem value="cancelado">Cancelado</SelectItem>
@@ -113,7 +113,7 @@ export function CalendarFilters({
               <SelectValue placeholder="Todos os clientes" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos os clientes</SelectItem>
+              <SelectItem value="todos">Todos os clientes</SelectItem>
               {clientes.map((cliente) => (
                 <SelectItem key={cliente.id} value={cliente.id}>
                   {cliente.nome}

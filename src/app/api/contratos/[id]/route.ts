@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
 import { cookies } from 'next/headers';
-import { Resend } from 'resend';
+import { resend } from '@/lib/resend';
 import { gerarTokenPublico } from '@/lib/token-utils';
 import { gerarTemplateEmailContrato, gerarAssuntoEmailContrato } from '@/lib/email-contrato-templates';
-
-const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export async function GET(
   request: NextRequest,

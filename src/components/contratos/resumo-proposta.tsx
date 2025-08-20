@@ -32,10 +32,11 @@ export function ResumoPropostaContrato({ proposta, contratoValidoPara = 'Sábado
     return valor;
   };
 
-  // Função para calcular subtotal de uma categoria
-  const calcularSubtotalCategoria = (itens: LinhaItem[]) => {
+  // Função para calcular subtotal de uma categoria (incluindo subprodutos)
+  const calcularSubtotalCategoria = (itens: LinhaItem[]): number => {
     return itens.reduce((acc, item) => {
       if (item.valorUnitario > 0 && item.quantidade > 0) {
+        // Calcular valor do item principal
         const itemTotal = item.valorUnitario * item.quantidade;
         const desconto = itemTotal * (item.descontoAplicado || 0) / 100;
         let descontoCupom = 0;
@@ -48,19 +49,85 @@ export function ResumoPropostaContrato({ proposta, contratoValidoPara = 'Sábado
           }
         }
         
-        return acc + (itemTotal - desconto - descontoCupom);
+        const totalPrincipal = itemTotal - desconto - descontoCupom;
+        
+        // Calcular total dos subprodutos recursivamente
+        const totalSubprodutos = (item.subprodutos || []).reduce((subAcc, subproduto) => {
+          return subAcc + calcularSubtotalCategoria([subproduto]);
+        }, 0);
+        
+        return acc + totalPrincipal + totalSubprodutos;
       }
       return acc;
     }, 0);
   };
 
-  // Função para renderizar itens de uma categoria
+  // Função para renderizar itens de uma categoria (incluindo subprodutos)
   const renderizarItensCategoria = (itens: LinhaItem[], categoria: string) => {
     const itensValidos = itens.filter(item => item.valorUnitario > 0 && item.quantidade > 0);
     
     if (itensValidos.length === 0) return null;
 
     const subtotal = calcularSubtotalCategoria(itensValidos);
+
+    // Função para renderizar um item individual (principal ou subproduto)
+    const renderizarItem = (item: LinhaItem, isSubproduto: boolean = false, itemIndex: number | string) => {
+      const itemTotal = item.valorUnitario * item.quantidade;
+      const desconto = itemTotal * (item.descontoAplicado || 0) / 100;
+      let descontoCupom = 0;
+      
+      if (item.cupomAplicado) {
+        if (item.cupomAplicado.tipo_desconto === 'percentual') {
+          descontoCupom = (itemTotal - desconto) * (item.cupomAplicado.valor_desconto / 100);
+        } else {
+          descontoCupom = Math.min(item.cupomAplicado.valor_desconto, itemTotal - desconto);
+        }
+      }
+      
+      const valorItemSozinho = itemTotal - desconto - descontoCupom;
+      
+      // Para item principal, mostrar valor total incluindo subprodutos
+      // Para subproduto, mostrar apenas valor do subproduto
+      const valorTotalComSubprodutos = isSubproduto ? valorItemSozinho : calcularSubtotalCategoria([item]);
+
+      return (
+        <div key={`${itemIndex}-${isSubproduto ? 'sub' : 'main'}`} className={`px-3 py-2 border-b border-gray-200 flex justify-between items-center text-sm ${isSubproduto ? 'bg-gray-50' : ''}`}>
+          <div className="flex-1" style={{ paddingLeft: isSubproduto ? '2rem' : '0' }}>
+            <div className="flex items-center">
+              {isSubproduto && (
+                <div className="w-4 h-0.5 bg-gray-400 mr-2"></div>
+              )}
+              <div className="font-medium">{item.descricao}</div>
+            </div>
+            <div className="text-xs text-gray-600 mt-1">
+              Qtd: {item.quantidade} x {item.valorUnitario.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+            </div>
+            {item.descontoAplicado > 0 && (
+              <div className="text-xs text-gray-600">
+                Desconto: {item.descontoAplicado}%
+              </div>
+            )}
+            {item.cupomAplicado && (
+              <div className="text-xs text-green-600">
+                Cupom: {item.cupomAplicado.codigo} 
+                {item.cupomAplicado.tipo_desconto === 'percentual' 
+                  ? ` (${item.cupomAplicado.valor_desconto}%)`
+                  : ` (${item.cupomAplicado.valor_desconto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})`
+                }
+              </div>
+            )}
+          </div>
+          <div className="flex gap-8">
+            <span className="w-20 text-right">
+              {item.valorUnitario.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+            </span>
+            <span className="w-20 text-right font-medium">
+              {valorTotalComSubprodutos.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+            </span>
+          </div>
+        </div>
+      );
+    };
 
     return (
       <div className="mb-4">
@@ -74,51 +141,24 @@ export function ResumoPropostaContrato({ proposta, contratoValidoPara = 'Sábado
           </div>
         </div>
         
-        {itensValidos.map((item, index) => {
-          const itemTotal = item.valorUnitario * item.quantidade;
-          const desconto = itemTotal * (item.descontoAplicado || 0) / 100;
-          let descontoCupom = 0;
-          
-          if (item.cupomAplicado) {
-            if (item.cupomAplicado.tipo_desconto === 'percentual') {
-              descontoCupom = (itemTotal - desconto) * (item.cupomAplicado.valor_desconto / 100);
-            } else {
-              descontoCupom = Math.min(item.cupomAplicado.valor_desconto, itemTotal - desconto);
+        {itensValidos.map((item, index) => (
+          <div key={index}>
+            {renderizarItem(item, false, index)}
+            {/* Renderizar subprodutos se existirem */}
+            {item.subprodutos && item.subprodutos.length > 0 && 
+              item.subprodutos
+                .filter(sub => sub.valorUnitario > 0 && sub.quantidade > 0)
+                .map((subproduto, subIndex) => 
+                  renderizarItem(subproduto, true, `${index}-${subIndex}`)
+                )
             }
-          }
-          
-          const valorFinal = itemTotal - desconto - descontoCupom;
-
-          return (
-            <div key={index} className="px-3 py-2 border-b border-gray-200 flex justify-between items-center text-sm">
-              <div className="flex-1">
-                <div className="font-medium">{item.descricao}</div>
-                {item.descontoAplicado > 0 && (
-                  <div className="text-xs text-gray-600">
-                    Desconto: {item.descontoAplicado}%
-                  </div>
-                )}
-                {item.cupomAplicado && (
-                  <div className="text-xs text-green-600">
-                    Cupom: {item.cupomAplicado.codigo} 
-                    {item.cupomAplicado.tipo_desconto === 'percentual' 
-                      ? ` (${item.cupomAplicado.valor_desconto}%)`
-                      : ` (${item.cupomAplicado.valor_desconto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})`
-                    }
-                  </div>
-                )}
-              </div>
-              <div className="flex gap-8">
-                <span className="w-20 text-right">
-                  {item.valorUnitario.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
-                </span>
-                <span className="w-20 text-right">
-                  {valorFinal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+          </div>
+        ))}
+        
+        <div className="px-3 py-3 bg-gray-100 font-semibold flex justify-between">
+          <span>Subtotal {categoria}:</span>
+          <span>{subtotal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</span>
+        </div>
       </div>
     );
   };

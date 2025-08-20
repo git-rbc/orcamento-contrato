@@ -30,14 +30,15 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { CalendarEventForm } from './calendar-event-form';
+import type { Reserva, Cliente, EspacoEvento } from '@/types/calendario';
 
 interface CalendarDetailModalProps {
-  event: any;
+  event: Reserva;
   onClose: () => void;
-  onUpdate: (id: string, data: any) => void;
+  onUpdate: (id: string, data: Partial<Reserva>) => void;
   onDelete: (id: string) => void;
-  espacos: any[];
-  clientes: any[];
+  espacos: EspacoEvento[];
+  clientes: Cliente[];
 }
 
 export function CalendarDetailModal({
@@ -52,7 +53,7 @@ export function CalendarDetailModal({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleStatusChange = async (newStatus: string) => {
+  const handleStatusChange = async (newStatus: 'confirmado' | 'pendente' | 'cancelado') => {
     setIsUpdating(true);
     try {
       await onUpdate(event.id, { status: newStatus });
@@ -67,7 +68,7 @@ export function CalendarDetailModal({
     onClose();
   };
 
-  const handleUpdate = async (data: any) => {
+  const handleUpdate = async (data: Partial<Reserva>) => {
     await onUpdate(event.id, data);
     setIsEditMode(false);
   };
@@ -103,10 +104,32 @@ export function CalendarDetailModal({
       <CalendarEventForm
         open={true}
         onClose={() => setIsEditMode(false)}
-        onSubmit={handleUpdate}
+        onSubmit={(data) => handleUpdate({
+          titulo: data.titulo,
+          espaco_evento_id: data.espaco_evento_id,
+          cliente_id: data.cliente_id || undefined,
+          data_inicio: data.data_inicio,
+          data_fim: data.data_fim,
+          hora_inicio: data.hora_inicio,
+          hora_fim: data.hora_fim,
+          status: data.status,
+          descricao: data.descricao || undefined,
+          observacoes: data.observacoes || undefined
+        })}
         espacos={espacos}
         clientes={clientes}
-        defaultValues={event}
+        defaultValues={{
+          titulo: event.titulo,
+          espaco_evento_id: event.espaco_evento_id,
+          cliente_id: event.cliente_id || undefined,
+          data_inicio: event.data_inicio,
+          data_fim: event.data_fim,
+          hora_inicio: event.hora_inicio,
+          hora_fim: event.hora_fim,
+          status: event.status,
+          descricao: event.descricao || undefined,
+          observacoes: event.observacoes || undefined
+        }}
         isEditMode={true}
       />
     );
@@ -119,7 +142,7 @@ export function CalendarDetailModal({
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl">{event.titulo}</DialogTitle>
-              <Badge variant={getStatusColor(event.status) as any}>
+              <Badge variant={getStatusColor(event.status) as 'default' | 'secondary' | 'destructive' | 'outline'}>
                 {getStatusIcon(event.status)}
                 <span className="ml-1">{event.status}</span>
               </Badge>
@@ -287,7 +310,7 @@ export function CalendarDetailModal({
                       Contrato Vinculado
                     </h3>
                     <p className="text-sm">
-                      Número: <span className="font-medium">{event.contrato.numero_contrato}</span>
+                      Número: <span className="font-medium">{event.contrato.numero}</span>
                     </p>
                   </CardContent>
                 </Card>

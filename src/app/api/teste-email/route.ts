@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase-server';
-import { Resend } from 'resend';
+import { resend } from '@/lib/resend';
 import { gerarUrlPublicaProposta, gerarUrlRecursoEstatico } from '@/lib/token-utils';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 // GET /api/teste-email?cliente_id=xxx - Enviar email de teste
 export async function GET(request: NextRequest) {

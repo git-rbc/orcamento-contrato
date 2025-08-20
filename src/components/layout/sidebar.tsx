@@ -29,6 +29,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 interface SidebarProps {
   className?: string;
@@ -180,6 +181,7 @@ function MenuItemComponent({
   collapsed: boolean; 
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const router = useRouter();
   const isActive = pathname === item.href;
   const hasChildren = item.children && item.children.length > 0;
   const Icon = iconMap[item.icon] || Settings;
@@ -198,7 +200,13 @@ function MenuItemComponent({
 
   const handleClick = () => {
     if (hasChildren && !collapsed) {
-      setIsExpanded(!isExpanded);
+      if (isExpanded) {
+        // Se já está expandido, navegar para a rota pai
+        router.push(item.href);
+      } else {
+        // Se não está expandido, expandir
+        setIsExpanded(true);
+      }
     }
   };
 
@@ -459,6 +467,9 @@ function SidebarComponent({ className }: SidebarProps) {
                   </div>
                 </div>
               )}
+              
+              {/* Notification Bell */}
+              <NotificationBell />
             </div>
             
             {!collapsed && (

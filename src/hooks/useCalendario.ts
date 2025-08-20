@@ -1,67 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase';
 import { format } from 'date-fns';
+import type { Reserva, Bloqueio, EspacoEvento, Cliente, DisponibilidadeResponse } from '@/types/calendario';
 
-interface Reserva {
-  id: string;
-  espaco_evento_id: string;
-  contrato_id?: string;
-  data_inicio: string;
-  data_fim: string;
-  hora_inicio: string;
-  hora_fim: string;
-  status: 'confirmado' | 'pendente' | 'cancelado';
-  titulo: string;
-  descricao?: string;
-  cliente_id?: string;
-  observacoes?: string;
-  created_at: string;
-  updated_at: string;
-  created_by: string;
-  cliente?: {
-    nome: string;
-    telefone?: string;
-    email?: string;
-  };
-  espaco?: {
-    nome: string;
-    capacidade_maxima?: number;
-  };
-  contrato?: {
-    numero_contrato: string;
-  };
-}
-
-interface Bloqueio {
-  id: string;
-  espaco_evento_id: string;
-  data_inicio: string;
-  data_fim: string;
-  motivo: string;
-  observacoes?: string;
-  created_at: string;
-  created_by: string;
-  espaco?: {
-    nome: string;
-  };
-}
-
-interface Espaco {
-  id: string;
-  nome: string;
-  capacidade_maxima?: number;
-  valor_diaria?: number;
-  valor_hora?: number;
-  ativo: boolean;
-}
-
-interface Cliente {
-  id: string;
-  nome: string;
-  cpf_cnpj?: string;
-  telefone?: string;
-  email?: string;
-}
 
 interface CalendarioFilters {
   espacoId?: string;
@@ -72,7 +13,7 @@ interface CalendarioFilters {
 export function useCalendario() {
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [bloqueios, setBloqueios] = useState<Bloqueio[]>([]);
-  const [espacos, setEspacos] = useState<Espaco[]>([]);
+  const [espacos, setEspacos] = useState<EspacoEvento[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,15 +74,15 @@ export function useCalendario() {
         .gte('data_inicio', format(startDate, 'yyyy-MM-dd'))
         .lte('data_fim', format(endDate, 'yyyy-MM-dd'));
 
-      if (filters.espacoId) {
+      if (filters.espacoId && filters.espacoId !== 'todos') {
         query = query.eq('espaco_evento_id', filters.espacoId);
       }
 
-      if (filters.status) {
+      if (filters.status && filters.status !== 'todos') {
         query = query.eq('status', filters.status);
       }
 
-      if (filters.clienteId) {
+      if (filters.clienteId && filters.clienteId !== 'todos') {
         query = query.eq('cliente_id', filters.clienteId);
       }
 
@@ -192,11 +133,15 @@ export function useCalendario() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
+      if (!user?.id) {
+        throw new Error('Usuário não autenticado');
+      }
+      
       const { data, error } = await supabase
         .from('reservas_espacos')
         .insert({
           ...reservaData,
-          created_by: user?.id
+          created_by: user.id
         })
         .select()
         .single();
@@ -324,7 +269,7 @@ export function useCalendario() {
           reservas: reservasConflito?.length || 0,
           bloqueios: bloqueiosConflito?.length || 0
         }
-      };
+      } as DisponibilidadeResponse;
     } catch (err) {
       console.error('Erro ao verificar disponibilidade:', err);
       throw err;

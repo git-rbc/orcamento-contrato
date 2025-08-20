@@ -12,6 +12,8 @@ import { CalendarFilters } from '@/components/calendario/calendar-filters';
 import { CalendarDetailModal } from '@/components/calendario/calendar-detail-modal';
 import { CalendarEventForm } from '@/components/calendario/calendar-event-form';
 import { useCalendario } from '@/hooks/useCalendario';
+import { useReservasTemporarias } from '@/hooks/useReservasTemporarias';
+import { useFilaEspera } from '@/hooks/useFilaEspera';
 import { toast } from 'sonner';
 
 export default function CalendarioPage() {
@@ -22,9 +24,9 @@ export default function CalendarioPage() {
   const [showEventForm, setShowEventForm] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [filters, setFilters] = useState({
-    espacoId: '',
-    status: '',
-    clienteId: ''
+    espacoId: 'todos',
+    status: 'todos',
+    clienteId: 'todos'
   });
 
   const {
@@ -42,6 +44,9 @@ export default function CalendarioPage() {
     deleteBloqueio
   } = useCalendario();
 
+  const { criarReservaTemporaria } = useReservasTemporarias();
+  const { entrarNaFila } = useFilaEspera();
+
   useEffect(() => {
     const loadData = async () => {
       const startDate = viewType === 'month' 
@@ -58,7 +63,7 @@ export default function CalendarioPage() {
 
       await Promise.all([
         fetchReservas(startDate, endDate, filters),
-        fetchBloqueios(startDate, endDate, filters.espacoId)
+        fetchBloqueios(startDate, endDate, filters.espacoId === 'todos' ? '' : filters.espacoId)
       ]);
     };
 
@@ -150,7 +155,7 @@ export default function CalendarioPage() {
       await fetchBloqueios(
         startOfMonth(currentDate),
         endOfMonth(currentDate),
-        filters.espacoId
+        filters.espacoId === 'todos' ? '' : filters.espacoId
       );
     } catch (error) {
       toast.error('Erro ao criar bloqueio');
@@ -164,10 +169,34 @@ export default function CalendarioPage() {
       await fetchBloqueios(
         startOfMonth(currentDate),
         endOfMonth(currentDate),
-        filters.espacoId
+        filters.espacoId === 'todos' ? '' : filters.espacoId
       );
     } catch (error) {
       toast.error('Erro ao remover bloqueio');
+    }
+  };
+
+  const handleCreateTemporaria = async (data: any) => {
+    try {
+      await criarReservaTemporaria(data);
+      toast.success('Reserva temporária criada com sucesso!');
+      // Refresh data
+      await fetchReservas(
+        startOfMonth(currentDate),
+        endOfMonth(currentDate),
+        filters
+      );
+    } catch (error) {
+      toast.error('Erro ao criar reserva temporária');
+    }
+  };
+
+  const handleEntrarFila = async (data: any) => {
+    try {
+      await entrarNaFila(data);
+      toast.success('Você entrou na fila de espera!');
+    } catch (error) {
+      toast.error('Erro ao entrar na fila de espera');
     }
   };
 
@@ -360,6 +389,8 @@ export default function CalendarioPage() {
             setSelectedDate(null);
           }}
           onSubmit={handleCreateEvent}
+          onSubmitTemporaria={handleCreateTemporaria}
+          onEntrarFilaEspera={handleEntrarFila}
           espacos={espacos}
           clientes={clientes}
           defaultDate={selectedDate}

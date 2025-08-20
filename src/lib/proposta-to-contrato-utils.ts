@@ -10,6 +10,10 @@ interface LinhaItem {
     tipo_desconto: 'percentual' | 'fixo';
     valor_desconto: number;
   };
+  // Campos para subprodutos
+  subprodutos?: LinhaItem[];
+  isSubproduto?: boolean;
+  parentId?: string;
 }
 
 interface PropostaData {
@@ -95,9 +99,10 @@ export function gerarTextoServicos(proposta: PropostaData): string {
 }
 
 /**
- * Calcula valor total de um item com descontos aplicados
+ * Calcula valor total de um item com descontos aplicados (incluindo subprodutos)
  */
 function calcularValorItemComDesconto(item: LinhaItem): number {
+  // Calcular total do item principal
   const valorBruto = item.valorUnitario * item.quantidade;
   const descontoNormal = valorBruto * (item.descontoAplicado || 0) / 100;
   let descontoCupom = 0;
@@ -110,7 +115,14 @@ function calcularValorItemComDesconto(item: LinhaItem): number {
     }
   }
   
-  return valorBruto - descontoNormal - descontoCupom;
+  const totalPrincipal = valorBruto - descontoNormal - descontoCupom;
+  
+  // Calcular total dos subprodutos recursivamente
+  const totalSubprodutos = (item.subprodutos || []).reduce((acc, subproduto) => {
+    return acc + calcularValorItemComDesconto(subproduto);
+  }, 0);
+  
+  return totalPrincipal + totalSubprodutos;
 }
 
 /**
@@ -144,13 +156,34 @@ export function gerarResumoPropostaHtml(proposta: PropostaData): string {
         </div>
     `;
 
-    itensValidos.forEach(item => {
-      const valorFinal = calcularValorItemComDesconto(item);
-      html += `
-        <div style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem;">
-          <div style="flex: 1;">
-            <div style="font-weight: 500; color: #000;">${item.descricao}</div>
-            <div style="color: #6b7280; font-size: 0.75rem;">
+    // Função para renderizar um item individual (principal ou subproduto)
+    const renderizarItem = (item: LinhaItem, isSubproduto: boolean = false) => {
+      const indentacao = isSubproduto ? '2rem' : '0';
+      const backgroundColor = isSubproduto ? '#f9fafb' : '';
+      const corFundo = backgroundColor ? `background-color: ${backgroundColor};` : '';
+      
+      // Calcular valor apenas do item (sem subprodutos para exibição individual)
+      const valorBruto = item.valorUnitario * item.quantidade;
+      const descontoNormal = valorBruto * (item.descontoAplicado || 0) / 100;
+      let descontoCupom = 0;
+      
+      if (item.cupomAplicado) {
+        if (item.cupomAplicado.tipo_desconto === 'percentual') {
+          descontoCupom = (valorBruto - descontoNormal) * (item.cupomAplicado.valor_desconto / 100);
+        } else {
+          descontoCupom = Math.min(item.cupomAplicado.valor_desconto, valorBruto - descontoNormal);
+        }
+      }
+      
+      const valorItemSozinho = valorBruto - descontoNormal - descontoCupom;
+      const valorTotalComSubprodutos = isSubproduto ? valorItemSozinho : calcularValorItemComDesconto(item);
+
+      return `
+        <div style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; ${corFundo}">
+          <div style="flex: 1; padding-left: ${indentacao};">
+            ${isSubproduto ? '<div style="display: inline-block; width: 1rem; height: 0.125rem; background-color: #6b7280; margin-right: 0.5rem; vertical-align: middle;"></div>' : ''}
+            <div style="font-weight: 500; color: #000; ${isSubproduto ? 'display: inline;' : ''}">${item.descricao}</div>
+            <div style="color: #6b7280; font-size: 0.75rem; margin-top: 0.25rem;">
               Qtd: ${item.quantidade} x ${formatCurrency(item.valorUnitario)}
             </div>
             ${(item.descontoAplicado || 0) > 0 ? `
@@ -168,10 +201,24 @@ export function gerarResumoPropostaHtml(proposta: PropostaData): string {
           </div>
           <div style="display: flex; gap: 2rem; align-items: center;">
             <span style="color: #000;">${formatCurrency(item.valorUnitario)}</span>
-            <span style="font-weight: 600; color: #000;">${formatCurrency(valorFinal)}</span>
+            <span style="font-weight: 600; color: #000;">${formatCurrency(valorTotalComSubprodutos)}</span>
           </div>
         </div>
       `;
+    };
+
+    // Renderizar itens principais e seus subprodutos
+    itensValidos.forEach(item => {
+      html += renderizarItem(item, false);
+      
+      // Renderizar subprodutos se existirem
+      if (item.subprodutos && item.subprodutos.length > 0) {
+        item.subprodutos.forEach(subproduto => {
+          if (subproduto.valorUnitario > 0 && subproduto.quantidade > 0) {
+            html += renderizarItem(subproduto, true);
+          }
+        });
+      }
     });
 
     html += `

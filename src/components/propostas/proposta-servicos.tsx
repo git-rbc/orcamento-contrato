@@ -33,11 +33,15 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
     descontoPermitido: 0, 
     descontoAplicado: 0, 
     tipoItem: 'produto', 
-    calculoAutomatico: false 
+    calculoAutomatico: false
   }]);
+
+  // Serviços não têm subprodutos - função removida
+
   const removeItem = (id: string) => {
-    // Não permitir exclusão do item de decoração - apenas resetar para o estado inicial
     const item = items.find(i => i.id === id);
+    
+    // Não permitir exclusão do item de decoração - apenas resetar para o estado inicial
     if (item && (
       item.descricao === 'Selecione a decoração clicando aqui' || 
       item.descricao.toLowerCase().includes('decoração') ||
@@ -52,12 +56,13 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
               descricao: 'Selecione a decoração clicando aqui',
               valorUnitario: 0,
               descontoPermitido: 0,
-              descontoAplicado: 0
+              descontoAplicado: 0,
             }
           : i
       ));
       return;
     }
+    
     setItems(items.filter(i => i.id !== id));
   };
   
@@ -79,7 +84,6 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
     setActiveItemId(null);
   };
 
-  
   const change = (id: string, field: keyof LinhaItem, value: string | number) => {
     setItems(items.map(i => {
       if (i.id !== id) return i;
@@ -92,13 +96,13 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
   };
 
   const openProductSearch = (itemId: string) => {
-    const item = items.find(i => i.id === itemId);
+    const targetItem = items.find(i => i.id === itemId);
     
     // Verificar se é o item de decoração para aplicar filtro
-    if (item && (
-      item.descricao === 'Selecione a decoração clicando aqui' || 
-      item.descricao.toLowerCase().includes('decoração') ||
-      item.descricao.toLowerCase().includes('decoracao')
+    if (targetItem && (
+      targetItem.descricao === 'Selecione a decoração clicando aqui' || 
+      targetItem.descricao.toLowerCase().includes('decoração') ||
+      targetItem.descricao.toLowerCase().includes('decoracao')
     )) {
       setSeguimentoFiltro('decoracao');
     } else {
@@ -107,10 +111,10 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
     
     setActiveItemId(itemId);
     setIsModalOpen(true);
-  };
+  }
 
-  
-  const total = (item: LinhaItem) => {
+
+  const calcularTotal = (item: LinhaItem) => {
     const subtotal = item.valorUnitario * item.quantidade;
     const valorDesconto = subtotal * (item.descontoAplicado / 100);
     const subtotalComDesconto = subtotal - valorDesconto;
@@ -128,196 +132,94 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
     return subtotalComDesconto - descontoCupom;
   };
 
-  // Verificar se algum item tem desconto permitido
-  const hasDescontoPermitido = items.some(item => item.descontoPermitido > 0);
-
-  const discountOptions = [10, 20, 30, 40, 50, 100];
-
-  const getItemIcon = (tipoItem: string) => {
-    // Remover todos os ícones
-    return null;
-  };
-
-  // Função para verificar se um serviço é editável
-  const isServiceEditable = (item: LinhaItem) => {
-    if (item.tipoItem === 'produto') return true;
+  // Função para renderizar uma linha de item
+  const renderItemRow = (item: LinhaItem) => {
+    const isDecoracaoItem = item.descricao === 'Selecione a decoração clicando aqui' || 
+                           item.descricao.toLowerCase().includes('decoração') ||
+                           item.descricao.toLowerCase().includes('decoracao');
     
-    const serviceName = item.descricao.toLowerCase();
-    const editableServices = [
-      'locação',
-      'locacao',
-      'gerador de energia',
-      'gerador',
-      'tx. ecad',
-      'ecad',
-      'decoração',
-      'decoracao',
-      'selecione a decoração'
-    ];
-    
-    return editableServices.some(service => serviceName.includes(service));
-  };
-
-  // Função para verificar se deve mostrar coluna quantidade
-  const shouldShowQuantityColumn = () => {
-    return false; // Esconder campos de quantidade
-  };
-
-  const getItemPlaceholder = (tipoItem: string) => {
-    switch (tipoItem) {
-      case 'servico':
-        return 'Serviço template (calculado automaticamente)';
-      default:
-        return 'Clique para selecionar um produto...';
-    }
-  };
-
-  const handleItemClick = (item: LinhaItem) => {
-    if (item.tipoItem === 'produto') {
-      openProductSearch(item.id);
-    }
-    // Serviços não são clicáveis (calculados automaticamente)
+    return (
+      <tr key={item.id} className="border-b last:border-0">
+        <td className="pl-3 pr-3 py-1">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Input 
+                placeholder={item.calculoAutomatico ? "Serviço template (calculado automaticamente)" : "Clique para selecionar um produto..."} 
+                value={item.descricao} 
+                onClick={() => !item.calculoAutomatico && openProductSearch(item.id)}
+                readOnly
+                className={`${!item.calculoAutomatico ? 'cursor-pointer' : ''} flex-1`}
+              />
+            </div>
+            {item.cupomAplicado && (
+              <Badge variant="secondary" className="text-xs ml-6">
+                <Tag className="h-3 w-3 mr-1" />
+                {item.cupomAplicado.codigo} - {item.cupomAplicado.tipo_desconto === 'percentual' 
+                  ? `${item.cupomAplicado.valor_desconto}%` 
+                  : `R$ ${item.cupomAplicado.valor_desconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                }
+              </Badge>
+            )}
+          </div>
+        </td>
+        <td className="px-3 py-1 text-right">
+          {calcularTotal(item).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+        </td>
+        <td className="text-center">
+          <div className="flex items-center gap-1">
+            {isDecoracaoItem && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => removeItem(item.id)}
+                    className="h-6 w-6"
+                  >
+                    <Trash2 className="h-3 w-3 text-orange-500"/>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Resetar decoração</p>
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
   };
 
   return (
     <TooltipProvider>
       <div className="border rounded overflow-hidden">
         <div className="bg-zinc-200 dark:bg-zinc-800 text-center font-semibold py-1">{titulo}</div>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b bg-zinc-100 dark:bg-zinc-900/40">
-              <th className="text-left px-3 py-2">Serviço/Produto</th>
-              {itemsComDescontoVisivel.size > 0 && <th className="text-right px-3 py-2 w-32">Desconto (%)</th>}
-              {itemsComDescontoVisivel.size > 0 && <th className="text-right px-1 py-2 w-32"></th>}
-              {shouldShowQuantityColumn() && <th className="text-right px-3 py-2 w-24">Qtde</th>}
-              <th className="text-right px-3 py-2 w-32">Valor Total</th>
-              <th className="px-1 py-2 w-8"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map(item => (
-              <tr key={item.id} className="border-b last:border-0">
-                <td className="px-3 py-1">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        placeholder={getItemPlaceholder(item.tipoItem)}
-                        value={item.descricao} 
-                        onClick={() => handleItemClick(item)}
-                        readOnly
-                        className="cursor-pointer flex-1"
-                      />
-                      {item.descontoPermitido > 0 && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button 
-                              variant="outline"
-                              size="sm" 
-                              className="text-xs h-8 px-2"
-                              onClick={() => {
-                                const newSet = new Set(itemsComDescontoVisivel);
-                                if (newSet.has(item.id)) {
-                                  newSet.delete(item.id);
-                                } else {
-                                  newSet.add(item.id);
-                                }
-                                setItensComDescontoVisivel(newSet);
-                              }}
-                            >
-                              +
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{itemsComDescontoVisivel.has(item.id) ? 'Ocultar desconto deste item' : 'Mostrar desconto deste item'}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                    </div>
-                    {item.cupomAplicado && (
-                      <Badge variant="secondary" className="text-xs">
-                        <Tag className="h-3 w-3 mr-1" />
-                        {item.cupomAplicado.codigo} - {item.cupomAplicado.tipo_desconto === 'percentual' 
-                          ? `${item.cupomAplicado.valor_desconto}%` 
-                          : `R$ ${item.cupomAplicado.valor_desconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
-                        }
-                      </Badge>
-                    )}
-                  </div>
-                </td>
-                {itemsComDescontoVisivel.size > 0 && (
-                  <td className="pr-1 pl-3 py-1 text-right">
-                    {itemsComDescontoVisivel.has(item.id) && item.descontoPermitido > 0 ? (
-                      <Select
-                        value={String(item.descontoAplicado)}
-                        onValueChange={value => change(item.id, 'descontoAplicado', value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="0%" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0">0%</SelectItem>
-                          {discountOptions.map(d => 
-                            d <= item.descontoPermitido && (
-                              <SelectItem key={d} value={String(d)}>{d}%</SelectItem>
-                            )
-                          )}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">-</span>
-                    )}
-                  </td>
-                )}
-                {itemsComDescontoVisivel.size > 0 && (
-                  <td className="pl-1 pr-3 py-1 text-right">
-                    {itemsComDescontoVisivel.has(item.id) && item.descontoPermitido > 0 && item.descontoAplicado > 0 ? (
-                      <span className="text-sm font-medium text-red-600">
-                        -{(item.valorUnitario * item.quantidade * (item.descontoAplicado / 100)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">-</span>
-                    )}
-                  </td>
-                )}
-                {shouldShowQuantityColumn() && (
-                  <td className="px-3 py-1 text-right">
-                    {isServiceEditable(item) ? (
-                      <Input 
-                        type="number" 
-                        value={item.quantidade === 0 ? '' : item.quantidade}
-                        onChange={e => change(item.id, 'quantidade', Number(e.target.value))}
-                        readOnly={item.calculoAutomatico && item.tipoCalculo === 'valor_fixo_ambiente'}
-                        className=""
-                      />
-                    ) : (
-                      <span className="text-muted-foreground text-sm text-center">-</span>
-                    )}
-                  </td>
-                )}
-                <td className="px-3 py-1 text-right">{total(item).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
-                <td className="text-center">
-                  {items.length > 1 && !item.calculoAutomatico && (
-                    <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}>
-                      <Trash2 className="h-4 w-4 text-red-500"/>
-                    </Button>
-                  )}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b bg-zinc-100 dark:bg-zinc-900/40">
+                <th className="text-left px-3 py-2">Serviço/Produto</th>
+                <th className="text-right px-3 py-2 w-32">Valor Total</th>
+                <th className="px-1 py-2 w-16">Ações</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="p-2 flex justify-end border-t">
-        <Button variant="outline" size="sm" onClick={addItem}><Plus className="h-4 w-4 mr-1"/>Adicionar Serviço</Button>
-      </div>
-      <SelecaoProdutoModal
-        open={isModalOpen}
-        onOpenChange={setIsModalOpen}
-        onSelect={handleProductSelect}
-        seguimentoFiltro={seguimentoFiltro}
-      />
+            </thead>
+            <tbody>
+              {items.map(item => renderItemRow(item))}
+            </tbody>
+          </table>
+        </div>
+        <div className="p-2 flex justify-end border-t">
+          <Button variant="outline" size="sm" onClick={addItem}>
+            <Plus className="h-4 w-4 mr-1" /> Adicionar Serviço
+          </Button>
+        </div>
+        <SelecaoProdutoModal
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          onSelect={handleProductSelect}
+          seguimentoFiltro={seguimentoFiltro}
+        />
       </div>
     </TooltipProvider>
   );
-} 
+}

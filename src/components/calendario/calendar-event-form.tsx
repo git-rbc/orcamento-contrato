@@ -34,6 +34,7 @@ import { CalendarIcon, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useCalendario } from '@/hooks/useCalendario';
+import type { DisponibilidadeResponse, ReservaDefinitivaPayload, ReservaTemporariaPayload, Cliente, EspacoEvento } from '@/types/calendario';
 
 const formSchema = z.object({
   titulo: z.string().min(1, 'Título é obrigatório'),
@@ -50,7 +51,8 @@ const formSchema = z.object({
   status: z.enum(['confirmado', 'pendente', 'cancelado']),
   descricao: z.string().optional(),
   observacoes: z.string().optional(),
-  criar_bloqueio: z.boolean().optional()
+  criar_bloqueio: z.boolean().optional(),
+  tipo_reserva: z.enum(['definitiva', 'temporaria']).default('definitiva')
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -58,11 +60,13 @@ type FormData = z.infer<typeof formSchema>;
 interface CalendarEventFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
-  espacos: any[];
-  clientes: any[];
+  onSubmit: (data: ReservaDefinitivaPayload) => void;
+  onSubmitTemporaria?: (data: ReservaTemporariaPayload) => Promise<void>;
+  onEntrarFilaEspera?: (data: ReservaTemporariaPayload) => Promise<void>;
+  espacos: EspacoEvento[];
+  clientes: Cliente[];
   defaultDate?: Date | null;
-  defaultValues?: any;
+  defaultValues?: Partial<ReservaDefinitivaPayload> & { id?: string };
   isEditMode?: boolean;
 }
 
@@ -70,6 +74,8 @@ export function CalendarEventForm({
   open,
   onClose,
   onSubmit,
+  onSubmitTemporaria,
+  onEntrarFilaEspera,
   espacos,
   clientes,
   defaultDate,
@@ -77,7 +83,7 @@ export function CalendarEventForm({
   isEditMode = false
 }: CalendarEventFormProps) {
   const [isChecking, setIsChecking] = useState(false);
-  const [disponibilidade, setDisponibilidade] = useState<any>(null);
+  const [disponibilidade, setDisponibilidade] = useState<DisponibilidadeResponse | null>(null);
   const { checkDisponibilidade } = useCalendario();
 
   const form = useForm<FormData>({
@@ -93,13 +99,15 @@ export function CalendarEventForm({
       status: defaultValues?.status || 'pendente',
       descricao: defaultValues?.descricao || '',
       observacoes: defaultValues?.observacoes || '',
-      criar_bloqueio: false
+      criar_bloqueio: false,
+      tipo_reserva: 'definitiva'
     }
   });
 
   const watchEspaco = form.watch('espaco_evento_id');
   const watchDataInicio = form.watch('data_inicio');
   const watchDataFim = form.watch('data_fim');
+  const watchTipoReserva = form.watch('tipo_reserva');
 
   // Verificar disponibilidade quando mudar espaço ou datas
   useEffect(() => {
@@ -138,30 +146,72 @@ export function CalendarEventForm({
       return;
     }
 
+    const baseData = {
+      espaco_evento_id: data.espaco_evento_id,
+      data_inicio: format(data.data_inicio, 'yyyy-MM-dd'),
+      data_fim: format(data.data_fim, 'yyyy-MM-dd'),
+      hora_inicio: data.hora_inicio,
+      hora_fim: data.hora_fim,
+      cliente_id: data.cliente_id || null,
+      descricao: data.descricao || null,
+      observacoes: data.observacoes || null
+    };
+
+    // Se for reserva temporária
+    if (data.tipo_reserva === 'temporaria') {
+      // Verificar disponibilidade primeiro
+      if (!isEditMode && disponibilidade && !disponibilidade.disponivel) {
+        toast.error('Espaço não disponível! Deseja entrar na fila de espera?', {
+          action: {
+            label: 'Entrar na Fila',
+            onClick: async () => {
+              if (onEntrarFilaEspera) {
+                try {
+                  await onEntrarFilaEspera(baseData);
+                  onClose();
+                } catch (error) {
+                  console.error('Erro ao entrar na fila:', error);
+                }
+              }
+            }
+          }
+        });
+        return;
+      }
+
+      if (onSubmitTemporaria) {
+        try {
+          await onSubmitTemporaria(baseData);
+          onClose();
+        } catch (error) {
+          console.error('Erro ao criar reserva temporária:', error);
+        }
+      }
+      return;
+    }
+
+    // Reserva definitiva
     // Verificar disponibilidade antes de salvar
     if (!isEditMode && disponibilidade && !disponibilidade.disponivel) {
       toast.error('O espaço não está disponível no período selecionado');
       return;
     }
 
-    const formattedData: any = {
-      ...data,
-      data_inicio: format(data.data_inicio, 'yyyy-MM-dd'),
-      data_fim: format(data.data_fim, 'yyyy-MM-dd'),
-      // Remover campos vazios/undefined
-      cliente_id: data.cliente_id || undefined,
-      descricao: data.descricao || undefined,
-      observacoes: data.observacoes || undefined
+    // Adicionar campos específicos para reserva definitiva
+    const reservaDefinitiva: ReservaDefinitivaPayload = {
+      ...baseData,
+      titulo: data.titulo,
+      status: data.status
     };
 
-    // Remover propriedades undefined e criar_bloqueio (não é coluna da tabela)
-    Object.keys(formattedData).forEach(key => {
-      if (formattedData[key] === undefined || formattedData[key] === '' || key === 'criar_bloqueio') {
-        delete formattedData[key];
+    // Remover propriedades undefined e vazias
+    (Object.keys(reservaDefinitiva) as (keyof ReservaDefinitivaPayload)[]).forEach(key => {
+      if (reservaDefinitiva[key] === undefined || reservaDefinitiva[key] === '') {
+        delete reservaDefinitiva[key];
       }
     });
 
-    onSubmit(formattedData);
+    onSubmit(reservaDefinitiva);
   };
 
   return (
@@ -182,20 +232,69 @@ export function CalendarEventForm({
               </TabsList>
 
               <TabsContent value="basic" className="space-y-4 mt-4">
-                {/* Título */}
-                <FormField
-                  control={form.control}
-                  name="titulo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Título do Evento</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: Casamento João e Maria" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Tipo de Reserva */}
+                {!isEditMode && (
+                  <FormField
+                    control={form.control}
+                    name="tipo_reserva"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tipo de Reserva</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="definitiva">
+                              <div className="flex items-center gap-2">
+                                <div className="h-3 w-3 rounded-full bg-green-500"></div>
+                                <div>
+                                  <p className="font-medium">Reserva Definitiva</p>
+                                  <p className="text-xs text-muted-foreground">Reserva confirmada no calendário</p>
+                                </div>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="temporaria">
+                              <div className="flex items-center gap-2">
+                                <div className="h-3 w-3 rounded-full bg-orange-500"></div>
+                                <div>
+                                  <p className="font-medium">Reserva Temporária</p>
+                                  <p className="text-xs text-muted-foreground">48 horas para conversão</p>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          {watchTipoReserva === 'temporaria' 
+                            ? 'Reserva por 48 horas com possibilidade de conversão em proposta'
+                            : 'Reserva confirmada diretamente no calendário'
+                          }
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {/* Título - Só para reservas definitivas */}
+                {(isEditMode || watchTipoReserva === 'definitiva') && (
+                  <FormField
+                    control={form.control}
+                    name="titulo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Título do Evento</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Ex: Casamento João e Maria" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {/* Espaço */}
                 <FormField
@@ -377,29 +476,31 @@ export function CalendarEventForm({
                   />
                 </div>
 
-                {/* Status */}
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="pendente">Pendente</SelectItem>
-                          <SelectItem value="confirmado">Confirmado</SelectItem>
-                          <SelectItem value="cancelado">Cancelado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* Status - Só para reservas definitivas */}
+                {(isEditMode || watchTipoReserva === 'definitiva') && (
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pendente">Pendente</SelectItem>
+                            <SelectItem value="confirmado">Confirmado</SelectItem>
+                            <SelectItem value="cancelado">Cancelado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {/* Alerta de Disponibilidade */}
                 {!isChecking && disponibilidade && !disponibilidade.disponivel && (

@@ -45,8 +45,20 @@ export interface EspacoEvento {
   id: string;
   nome: string;
   cidade: string;
-  descricao?: string;
+  capacidade_maxima: number;
+  descricao?: string | null;
+  tem_espaco_kids: boolean;
+  tem_pista_led: boolean;
+  tem_centro_better: boolean;
+  tipo_cadeira?: string | null;
+  tipo_decorativo?: string | null;
+  tipo_toalha?: string | null;
+  valor_diaria?: number | null;
+  valor_hora?: number | null;
   ativo: boolean;
+  endereco?: string | null;
+  created_at: string;
+  updated_at: string;
   layouts?: Layout[];
 }
 
@@ -86,12 +98,34 @@ export interface EventoCalendario {
 
 export interface DisponibilidadeResponse {
   disponivel: boolean;
-  conflitos?: Array<{
-    tipo: 'reserva' | 'bloqueio';
-    titulo: string;
-    data_inicio: string;
-    data_fim: string;
-  }>;
+  conflitos: {
+    reservas: number;
+    bloqueios: number;
+  };
+}
+
+export interface ReservaDefinitivaPayload {
+  titulo: string;
+  espaco_evento_id: string;
+  cliente_id?: string | null;
+  data_inicio: string;
+  data_fim: string;
+  hora_inicio: string;
+  hora_fim: string;
+  status: 'confirmado' | 'pendente' | 'cancelado';
+  descricao?: string | null;
+  observacoes?: string | null;
+}
+
+export interface ReservaTemporariaPayload {
+  espaco_evento_id: string;
+  cliente_id?: string | null;
+  data_inicio: string;
+  data_fim: string;
+  hora_inicio: string;
+  hora_fim: string;
+  descricao?: string | null;
+  observacoes?: string | null;
 }
 
 export interface CalendarioStats {
@@ -102,11 +136,84 @@ export interface CalendarioStats {
   dias_bloqueados: number;
 }
 
+export interface ReservaTemporaria {
+  id: string;
+  espaco_evento_id: string;
+  usuario_id: string;
+  cliente_id?: string;
+  data_inicio: string;
+  data_fim: string;
+  hora_inicio: string;
+  hora_fim: string;
+  status: 'ativa' | 'expirada' | 'convertida' | 'liberada';
+  expira_em: string;
+  numero_reserva?: string;
+  created_at: string;
+  updated_at: string;
+  vendedor?: {
+    nome: string;
+    email: string;
+  };
+  cliente?: {
+    nome: string;
+    email: string;
+  };
+  espaco?: EspacoEvento;
+}
+
+export interface FilaEspera {
+  id: string;
+  espaco_evento_id: string;
+  usuario_id: string;
+  data_inicio: string;
+  data_fim: string;
+  hora_inicio: string;
+  hora_fim: string;
+  posicao: number;
+  pontuacao: number;
+  status: 'ativo' | 'notificado' | 'removido';
+  created_at: string;
+  updated_at: string;
+  vendedor?: {
+    nome: string;
+    email: string;
+  };
+  espaco?: EspacoEvento;
+}
+
+export interface HistoricoConversao {
+  id: string;
+  reserva_temporaria_id: string;
+  contrato_id: string;
+  usuario_id: string;
+  tempo_conversao_horas: number;
+  created_at: string;
+}
+
+export interface DashboardMetrics {
+  reservas_ativas: number;
+  reservas_expirando: number;
+  propostas_geradas: number;
+  taxa_conversao: number;
+  tempo_medio_conversao: number;
+  posicoes_fila: FilaEspera[];
+  historico_conversoes: HistoricoConversao[];
+}
+
+export interface PontuacaoVendedor {
+  usuario_id: string;
+  pontos_base: number;
+  bonus_performance: number;
+  bonus_experiencia: number;
+  total: number;
+}
+
 export type ViewMode = 'month' | 'week' | 'day';
 
 export interface CalendarioContextType {
   reservas: Reserva[];
   bloqueios: Bloqueio[];
+  reservasTemporarias: ReservaTemporaria[];
   loading: boolean;
   error: string | null;
   filtros: FiltrosCalendario;

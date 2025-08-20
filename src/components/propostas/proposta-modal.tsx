@@ -49,6 +49,10 @@ export interface LinhaItem {
     valor_desconto: number;
     valor_desconto_aplicado: number;
   } | null;
+  // Campos para subprodutos
+  subprodutos?: LinhaItem[];
+  isSubproduto?: boolean;
+  parentId?: string;
 }
 
 
@@ -57,6 +61,102 @@ interface PropostaModalProps {
   onOpenChange: (open: boolean) => void;
   propostaId?: string | null; // Se fornecido, edita a proposta existente
 }
+
+// Função para garantir que todos os itens tenham o campo subprodutos inicializado
+const garantirSubprodutos = (items: LinhaItem[]): LinhaItem[] => {
+  return items.map(item => ({
+    ...item,
+    subprodutos: item.subprodutos || [],
+    // Garantir que subprodutos também tenham o campo inicializado recursivamente
+    ...(item.subprodutos && item.subprodutos.length > 0 ? {
+      subprodutos: garantirSubprodutos(item.subprodutos)
+    } : {})
+  }));
+};
+
+// Funções auxiliares para manipular subprodutos
+const adicionarSubproduto = (items: LinhaItem[], parentId: string): LinhaItem[] => {
+  return items.map(item => {
+    if (item.id === parentId) {
+      const novoSubproduto: LinhaItem = {
+        id: crypto.randomUUID(),
+        produtoId: null,
+        servicoTemplateId: 'e3f4d5c6-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
+        descricao: '',
+        valorUnitario: 0,
+        quantidade: 1,
+        descontoPermitido: 0,
+        descontoAplicado: 0,
+        tipoItem: item.tipoItem,
+        calculoAutomatico: false,
+        isSubproduto: true,
+        parentId: parentId,
+        subprodutos: []
+      };
+      
+      return {
+        ...item,
+        subprodutos: [...(item.subprodutos || []), novoSubproduto]
+      };
+    }
+    return item;
+  });
+};
+
+const removerSubproduto = (items: LinhaItem[], subprodutoId: string): LinhaItem[] => {
+  return items.map(item => ({
+    ...item,
+    subprodutos: item.subprodutos?.filter(sub => sub.id !== subprodutoId) || []
+  }));
+};
+
+const atualizarSubproduto = (items: LinhaItem[], subprodutoId: string, campo: keyof LinhaItem, valor: any): LinhaItem[] => {
+  return items.map(item => ({
+    ...item,
+    subprodutos: item.subprodutos?.map(sub => 
+      sub.id === subprodutoId ? { ...sub, [campo]: valor } : sub
+    ) || []
+  }));
+};
+
+const calcularTotalComSubprodutos = (item: LinhaItem): number => {
+  // Calcular total do item principal
+  const subtotalPrincipal = item.valorUnitario * item.quantidade;
+  const descontoPrincipal = subtotalPrincipal * (item.descontoAplicado / 100);
+  const totalPrincipal = subtotalPrincipal - descontoPrincipal;
+  
+  // Aplicar desconto do cupom no item principal
+  let descontoCupomPrincipal = 0;
+  if (item.cupomAplicado && totalPrincipal > 0) {
+    if (item.cupomAplicado.tipo_desconto === 'percentual') {
+      descontoCupomPrincipal = totalPrincipal * (item.cupomAplicado.valor_desconto / 100);
+    } else {
+      descontoCupomPrincipal = Math.min(item.cupomAplicado.valor_desconto, totalPrincipal);
+    }
+  }
+  
+  const totalPrincipalFinal = Math.max(0, totalPrincipal - descontoCupomPrincipal);
+  
+  // Calcular total dos subprodutos recursivamente
+  const totalSubprodutos = (item.subprodutos || []).reduce((acc, subproduto) => {
+    return acc + calcularTotalComSubprodutos(subproduto);
+  }, 0);
+  
+  return totalPrincipalFinal + totalSubprodutos;
+};
+
+const obterTodosItensFlat = (items: LinhaItem[]): LinhaItem[] => {
+  const resultado: LinhaItem[] = [];
+  
+  items.forEach(item => {
+    resultado.push(item);
+    if (item.subprodutos && item.subprodutos.length > 0) {
+      resultado.push(...obterTodosItensFlat(item.subprodutos));
+    }
+  });
+  
+  return resultado;
+};
 
 export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalProps) {
   const [dataEvento, setDataEvento] = useState<Date | undefined>();
@@ -88,7 +188,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
     descontoPermitido: 0, 
     descontoAplicado: 0, 
     tipoItem: 'produto', 
-    calculoAutomatico: false 
+    calculoAutomatico: false,
+    subprodutos: []
   }]);
   const [bebidasItens, setBebidasItens] = useState<LinhaItem[]>([{ 
     id: crypto.randomUUID(), 
@@ -99,7 +200,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
     descontoPermitido: 0, 
     descontoAplicado: 0, 
     tipoItem: 'produto', 
-    calculoAutomatico: false 
+    calculoAutomatico: false,
+    subprodutos: []
   }]);
   const [servicosItens, setServicosItens] = useState<LinhaItem[]>([{ 
     id: crypto.randomUUID(), 
@@ -121,7 +223,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
     descontoPermitido: 0, 
     descontoAplicado: 0, 
     tipoItem: 'produto', 
-    calculoAutomatico: false 
+    calculoAutomatico: false,
+    subprodutos: []
   }]);
   const [valorEntrada, setValorEntrada] = useState(0);
   const [totalProposta, setTotalProposta] = useState(0);
@@ -311,7 +414,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
             setTipoEvento(proposta.tipo_evento || '');
             
             // Preencher itens com fallback para arrays vazios se não houver dados
-            setAlimentacaoItens(proposta.itens_alimentacao && proposta.itens_alimentacao.length > 0 ? proposta.itens_alimentacao : [{
+            setAlimentacaoItens(proposta.itens_alimentacao && proposta.itens_alimentacao.length > 0 ? 
+              garantirSubprodutos(proposta.itens_alimentacao) : [{
               id: crypto.randomUUID(),
               produtoId: null,
               descricao: '',
@@ -320,10 +424,12 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
               descontoPermitido: 0,
               descontoAplicado: 0,
               tipoItem: 'produto',
-              calculoAutomatico: false
+              calculoAutomatico: false,
+              subprodutos: []
             }]);
             
-            setBebidasItens(proposta.itens_bebidas && proposta.itens_bebidas.length > 0 ? proposta.itens_bebidas : [{
+            setBebidasItens(proposta.itens_bebidas && proposta.itens_bebidas.length > 0 ? 
+              garantirSubprodutos(proposta.itens_bebidas) : [{
               id: crypto.randomUUID(),
               produtoId: null,
               descricao: '',
@@ -332,10 +438,12 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
               descontoPermitido: 0,
               descontoAplicado: 0,
               tipoItem: 'produto',
-              calculoAutomatico: false
+              calculoAutomatico: false,
+              subprodutos: []
             }]);
             
-            setServicosItens(proposta.itens_servicos && proposta.itens_servicos.length > 0 ? proposta.itens_servicos : [{
+            setServicosItens(proposta.itens_servicos && proposta.itens_servicos.length > 0 ? 
+              garantirSubprodutos(proposta.itens_servicos) : [{
               id: crypto.randomUUID(),
               produtoId: null,
               descricao: '',
@@ -344,10 +452,12 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
               descontoPermitido: 0,
               descontoAplicado: 0,
               tipoItem: 'servico',
-              calculoAutomatico: false
+              calculoAutomatico: false,
+              subprodutos: []
             }]);
             
-            setItensExtras(proposta.itens_extras && proposta.itens_extras.length > 0 ? proposta.itens_extras : [{
+            setItensExtras(proposta.itens_extras && proposta.itens_extras.length > 0 ? 
+              garantirSubprodutos(proposta.itens_extras) : [{
               id: crypto.randomUUID(),
               produtoId: null,
               descricao: '',
@@ -356,7 +466,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
               descontoPermitido: 0,
               descontoAplicado: 0,
               tipoItem: 'produto',
-              calculoAutomatico: false
+              calculoAutomatico: false,
+              subprodutos: []
             }]);
             
             
@@ -424,7 +535,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
           descontoPermitido: 0, 
           descontoAplicado: 0, 
           tipoItem: 'produto', 
-          calculoAutomatico: false 
+          calculoAutomatico: false,
+          subprodutos: []
         }]);
         setBebidasItens([{ 
           id: crypto.randomUUID(), 
@@ -435,7 +547,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
           descontoPermitido: 0, 
           descontoAplicado: 0, 
           tipoItem: 'produto', 
-          calculoAutomatico: false 
+          calculoAutomatico: false,
+          subprodutos: []
         }]);
         
         setItensExtras([{ 
@@ -447,7 +560,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
           descontoPermitido: 0, 
           descontoAplicado: 0, 
           tipoItem: 'produto', 
-          calculoAutomatico: false 
+          calculoAutomatico: false,
+          subprodutos: []
         }]);
         
         setValorEntrada(0);
@@ -546,34 +660,7 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
   useEffect(() => {
     const calculateSubtotal = (items: LinhaItem[]) => 
       items.reduce((acc, item) => {
-        // Validar valores básicos
-        const quantidade = Math.max(0, item.quantidade || 0);
-        const valorUnitario = Math.max(0, item.valorUnitario || 0);
-        const itemTotal = valorUnitario * quantidade;
-        
-        if (itemTotal === 0) {
-          return acc;
-        }
-        
-        // Aplicar desconto normal (máximo 100%)
-        const descontoAplicado = Math.min(100, Math.max(0, item.descontoAplicado || 0));
-        const discount = itemTotal * (descontoAplicado / 100);
-        const itemTotalWithDiscount = itemTotal - discount;
-        
-        // Aplicar desconto do cupom individual
-        let couponDiscount = 0;
-        if (item.cupomAplicado && itemTotalWithDiscount > 0) {
-          if (item.cupomAplicado.tipo_desconto === 'percentual') {
-            const percentualCupom = Math.min(100, Math.max(0, item.cupomAplicado.valor_desconto || 0));
-            couponDiscount = itemTotalWithDiscount * (percentualCupom / 100);
-          } else {
-            const valorCupom = Math.max(0, item.cupomAplicado.valor_desconto || 0);
-            couponDiscount = Math.min(valorCupom, itemTotalWithDiscount);
-          }
-        }
-        
-        const finalValue = Math.max(0, itemTotalWithDiscount - couponDiscount);
-        return acc + finalValue;
+        return acc + calcularTotalComSubprodutos(item);
       }, 0);
 
     const totalAlimentacao = calculateSubtotal(alimentacaoItens);
@@ -600,27 +687,46 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
   };
 
   const handleItemCupomChange = (itemId: string, cupom: any) => {
-    // Função helper para atualizar item em uma lista
-    const updateItemInList = (items: LinhaItem[], cupom: any) => {
+    // Função helper para atualizar item em uma lista (incluindo subprodutos)
+    const updateItemInList = (items: LinhaItem[], cupom: any): LinhaItem[] => {
       return items.map(item => {
+        // Verificar se o item principal é o alvo
         if (item.id === itemId) {
-          // Validar se cupom pode ser aplicado
           if (cupom && item.cupomAplicado && item.cupomAplicado.id === cupom.id) {
-            // Cupom já aplicado neste item, não fazer nada
             return item;
           }
-          
-          // Aplicar cupom (pode ser null para remover)
           return { ...item, cupomAplicado: cupom };
         }
+        
+        // Verificar subprodutos
+        if (item.subprodutos && item.subprodutos.length > 0) {
+          const subprodutosAtualizados = item.subprodutos.map(sub => {
+            if (sub.id === itemId) {
+              if (cupom && sub.cupomAplicado && sub.cupomAplicado.id === cupom.id) {
+                return sub;
+              }
+              return { ...sub, cupomAplicado: cupom };
+            }
+            return sub;
+          });
+          
+          return { ...item, subprodutos: subprodutosAtualizados };
+        }
+        
         return item;
       });
     };
 
-    // Verificar se o cupom já está sendo usado em outro item
+    // Verificar se o cupom já está sendo usado em outro item (incluindo subprodutos)
     if (cupom) {
-      const todasListas = [...alimentacaoItens, ...bebidasItens, ...servicosItens, ...itensExtras];
-      const cupomJaUsado = todasListas.some(item => 
+      const todosItensFlat = [
+        ...obterTodosItensFlat(alimentacaoItens),
+        ...obterTodosItensFlat(bebidasItens),
+        ...obterTodosItensFlat(servicosItens),
+        ...obterTodosItensFlat(itensExtras)
+      ];
+      
+      const cupomJaUsado = todosItensFlat.some(item => 
         item.id !== itemId && item.cupomAplicado?.id === cupom.id
       );
       
@@ -750,6 +856,16 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
     }
   }, [espacoId, dataEvento, numPessoas, capacidadeMaxima, dataContratacao, totalProposta, errosValidacao]);
 
+  // Garantir que todos os itens tenham campo subprodutos inicializado quando modal abrir
+  useEffect(() => {
+    if (open && !propostaId) {
+      // Aplicar apenas quando não há proposta sendo carregada (nova proposta)
+      setAlimentacaoItens(prev => garantirSubprodutos(prev));
+      setBebidasItens(prev => garantirSubprodutos(prev));
+      setItensExtras(prev => garantirSubprodutos(prev));
+    }
+  }, [open, propostaId]);
+
   const validarProposta = (): boolean => {
     const erros: string[] = [];
 
@@ -781,9 +897,14 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
       }
     }
 
-    // Validar se há pelo menos um item com valor
-    const todosItens = [...alimentacaoItens, ...bebidasItens, ...servicosItens, ...itensExtras];
-    const itensComValor = todosItens.filter(item => 
+    // Validar se há pelo menos um item com valor (incluindo subprodutos)
+    const todosItensFlat = [
+      ...obterTodosItensFlat(alimentacaoItens),
+      ...obterTodosItensFlat(bebidasItens),
+      ...obterTodosItensFlat(servicosItens),
+      ...obterTodosItensFlat(itensExtras)
+    ];
+    const itensComValor = todosItensFlat.filter(item => 
       item.valorUnitario > 0 && item.quantidade > 0
     );
 

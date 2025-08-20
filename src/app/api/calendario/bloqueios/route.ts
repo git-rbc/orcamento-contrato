@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerComponentClient } from '@/lib/supabase-server';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createServerComponentClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
     
     const dataInicio = searchParams.get('data_inicio');
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerComponentClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
     
     const { data: { user } } = await supabase.auth.getUser();
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createServerComponentClient();
+    const supabase = await createServerSupabaseClient();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

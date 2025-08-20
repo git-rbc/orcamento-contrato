@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerComponentClient } from '@/lib/supabase-server';
+import { createServerSupabaseClient } from '@/lib/supabase-server';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerComponentClient();
+    const supabase = await createServerSupabaseClient();
     const body = await request.json();
     
     const { espaco_id, data_inicio, data_fim, exclude_id } = body;
