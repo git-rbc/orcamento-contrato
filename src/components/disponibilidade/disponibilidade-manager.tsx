@@ -423,7 +423,7 @@ export function DisponibilidadeManager({ vendedorId, canEdit = true }: Disponibi
                     <SelectValue placeholder="Selecione a cidade" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma cidade</SelectItem>
+                    <SelectItem value="nenhuma">Nenhuma cidade</SelectItem>
                     {cidades.map((cidade) => (
                       <SelectItem key={cidade} value={cidade}>
                         {cidade}
@@ -443,7 +443,7 @@ export function DisponibilidadeManager({ vendedorId, canEdit = true }: Disponibi
                     <SelectValue placeholder="Selecione o ambiente" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum ambiente</SelectItem>
+                    <SelectItem value="nenhum">Nenhum ambiente</SelectItem>
                     {ambientes.map((ambiente) => (
                       <SelectItem key={ambiente} value={ambiente}>
                         {ambiente}

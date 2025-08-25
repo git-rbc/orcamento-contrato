@@ -26,7 +26,12 @@ import {
   PenSquare,
   Building2,
   Tag,
-  Calendar
+  Calendar,
+  Clock,
+  Ban,
+  BarChart3,
+  Timer,
+  TrendingUp
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -56,55 +61,129 @@ const AVAILABLE_MENUS: MenuItem[] = [
     description: 'Visão geral'
   },
   {
-    title: 'Clientes',
-    slug: 'clientes',
-    href: '/dashboard/clientes',
-    icon: 'Users',
-    description: 'Gestão de clientes'
-  },
-  {
-    title: 'Serviços',
-    slug: 'servicos',
-    href: '/dashboard/servicos',
-    icon: 'Package',
-    description: 'Gestão de serviços'
-  },
-  {
-    title: 'Produtos',
-    slug: 'produtos',
-    href: '/dashboard/produtos',
-    icon: 'Box',
-    description: 'Gestão de produtos'
-  },
-  {
-    title: 'Espaços de Eventos',
-    slug: 'espacos-eventos',
-    href: '/dashboard/espacos-eventos',
-    icon: 'Building2',
-    description: 'Espaços e ambientes para eventos'
+    title: 'Agendamento',
+    slug: 'agendamento',
+    href: '/dashboard/agendamento',
+    icon: 'Calendar',
+    description: 'Sistema de agendamento de reuniões',
+    children: [
+      {
+        title: 'Agendamento',
+        slug: 'agendamento-principal',
+        href: '/dashboard/agendamento',
+        icon: 'Calendar',
+        description: 'Página principal de agendamento'
+      },
+      {
+        title: 'Reuniões',
+        slug: 'agendamento-reunioes',
+        href: '/dashboard/agendamento/reunioes',
+        icon: 'Users',
+        description: 'Gestão de reuniões'
+      },
+      {
+        title: 'Disponibilidade',
+        slug: 'agendamento-disponibilidade',
+        href: '/dashboard/agendamento/disponibilidade',
+        icon: 'Clock',
+        description: 'Configurar horários disponíveis'
+      },
+      {
+        title: 'Bloqueios',
+        slug: 'agendamento-bloqueios',
+        href: '/dashboard/agendamento/bloqueios',
+        icon: 'Ban',
+        description: 'Gerenciar bloqueios de horários'
+      },
+      {
+        title: 'Dashboard',
+        slug: 'agendamento-dashboard',
+        href: '/dashboard/agendamento/dashboard',
+        icon: 'BarChart3',
+        description: 'Métricas de agendamento'
+      }
+    ]
   },
   {
     title: 'Calendário',
-    slug: 'calendario',
+    slug: 'calendario-menu',
     href: '/dashboard/calendario',
     icon: 'Calendar',
-    description: 'Gestão de reservas e disponibilidade'
+    description: 'Gestão de reservas e disponibilidade',
+    children: [
+      {
+        title: 'Calendário',
+        slug: 'calendario-principal',
+        href: '/dashboard/calendario',
+        icon: 'Calendar',
+        description: 'Calendário principal'
+      },
+      {
+        title: 'Reservas Temporárias',
+        slug: 'calendario-reservas-temporarias',
+        href: '/dashboard/calendario/reservas-temporarias',
+        icon: 'Timer',
+        description: 'Reservas temporárias'
+      },
+      {
+        title: 'Fila de Espera',
+        slug: 'calendario-fila-espera',
+        href: '/dashboard/calendario/fila-espera',
+        icon: 'Users',
+        description: 'Gerenciar fila de espera'
+      },
+      {
+        title: 'Dashboard Vendedor',
+        slug: 'calendario-dashboard-vendedor',
+        href: '/dashboard/calendario/dashboard-vendedor',
+        icon: 'BarChart3',
+        description: 'Dashboard para vendedores'
+      },
+      {
+        title: 'Métricas',
+        slug: 'calendario-metricas',
+        href: '/dashboard/calendario/metricas',
+        icon: 'TrendingUp',
+        description: 'Métricas e relatórios'
+      }
+    ]
   },
   {
-    title: 'Contratos',
-    slug: 'contratos',
+    title: 'Contrato',
+    slug: 'contrato-menu',
     href: '/dashboard/contratos',
     icon: 'FileText',
-    description: 'Orçamentos e contratos',
-    disabled: false
-  },
-  {
-    title: 'Relatórios',
-    slug: 'relatorios',
-    href: '/dashboard/relatorios',
-    icon: 'BarChart3',
-    description: 'Análises e estatísticas',
-    disabled: true
+    description: 'Gestão de contratos e produtos',
+    children: [
+      {
+        title: 'Produtos',
+        slug: 'produtos',
+        href: '/dashboard/produtos',
+        icon: 'Box',
+        description: 'Gestão de produtos'
+      },
+      {
+        title: 'Serviços',
+        slug: 'servicos',
+        href: '/dashboard/servicos',
+        icon: 'Package',
+        description: 'Gestão de serviços'
+      },
+      {
+        title: 'Propostas',
+        slug: 'propostas',
+        href: '/dashboard/propostas',
+        icon: 'FileText',
+        description: 'Gestão de propostas'
+      },
+      {
+        title: 'Contratos',
+        slug: 'contratos',
+        href: '/dashboard/contratos',
+        icon: 'PenSquare',
+        description: 'Orçamentos e contratos'
+      }
+    ]
   },
   {
     title: 'Administração',
@@ -114,11 +193,32 @@ const AVAILABLE_MENUS: MenuItem[] = [
     description: 'Gestão de usuários e sistema',
     children: [
       {
+        title: 'Administração',
+        slug: 'admin-principal',
+        href: '/dashboard/admin',
+        icon: 'Shield',
+        description: 'Página principal de administração'
+      },
+      {
+        title: 'Clientes',
+        slug: 'clientes',
+        href: '/dashboard/clientes',
+        icon: 'Users',
+        description: 'Gestão de clientes'
+      },
+      {
         title: 'Usuários',
         slug: 'admin-usuarios',
         href: '/dashboard/admin/usuarios',
         icon: 'UserCog',
         description: 'Gestão de usuários'
+      },
+      {
+        title: 'Espaços de Eventos',
+        slug: 'espacos-eventos',
+        href: '/dashboard/espacos-eventos',
+        icon: 'Building2',
+        description: 'Espaços e ambientes para eventos'
       },
       {
         title: 'Roles & Permissões',
@@ -128,27 +228,21 @@ const AVAILABLE_MENUS: MenuItem[] = [
         description: 'Controle de acesso'
       },
       {
-        title: 'Logs do Sistema',
-        slug: 'admin-logs',
-        href: '/dashboard/admin/logs',
-        icon: 'FileSearch',
-        description: 'Auditoria do sistema'
-      },
-      {
-        title: 'Configurações',
-        slug: 'admin-settings',
-        href: '/dashboard/admin/settings',
-        icon: 'Wrench',
-        description: 'Configurações gerais'
-      },
-      {
-        title: 'Descontos',
+        title: 'Cupom de Desconto',
         slug: 'admin-cupons',
         href: '/dashboard/admin/cupons',
         icon: 'Tag',
         description: 'Gestão de cupons de desconto'
       }
     ]
+  },
+  {
+    title: 'Relatórios',
+    slug: 'relatorios',
+    href: '/dashboard/relatorios',
+    icon: 'BarChart3',
+    description: 'Análises e estatísticas',
+    disabled: true
   }
 ];
 
@@ -167,7 +261,12 @@ const iconMap: Record<string, any> = {
   PenSquare,
   Building2,
   Tag,
-  Calendar
+  Calendar,
+  Clock,
+  Ban,
+  BarChart3,
+  Timer,
+  TrendingUp
 };
 
 // Componente para renderizar itens de menu (incluindo submenus)
@@ -200,13 +299,8 @@ function MenuItemComponent({
 
   const handleClick = () => {
     if (hasChildren && !collapsed) {
-      if (isExpanded) {
-        // Se já está expandido, navegar para a rota pai
-        router.push(item.href);
-      } else {
-        // Se não está expandido, expandir
-        setIsExpanded(true);
-      }
+      // Sempre alternar entre expandido/recolhido
+      setIsExpanded(!isExpanded);
     }
   };
 
@@ -407,7 +501,7 @@ function SidebarComponent({ className }: SidebarProps) {
     <div className={`bg-card border-r border-border transition-all duration-300 ${
       collapsed ? 'w-16' : 'w-64'
     } ${className}`}>
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col h-full overflow-hidden">
         {/* Header */}
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between">
@@ -481,15 +575,47 @@ function SidebarComponent({ className }: SidebarProps) {
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
-          {userMenus.map((item) => (
-            <MenuItemComponent 
-              key={item.slug} 
-              item={item} 
-              pathname={pathname} 
-              collapsed={collapsed} 
-            />
-          ))}
+        <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto 
+                        [&::-webkit-scrollbar]:w-1.5
+                        [&::-webkit-scrollbar-track]:bg-transparent
+                        [&::-webkit-scrollbar-thumb]:bg-gray-100
+                        [&::-webkit-scrollbar-thumb]:rounded-full
+                        [&::-webkit-scrollbar-thumb:hover]:bg-gray-200
+                        dark:[&::-webkit-scrollbar-thumb]:bg-gray-800
+                        dark:[&::-webkit-scrollbar-thumb:hover]:bg-gray-700">
+          {AVAILABLE_MENUS.filter(item => !item.disabled).map((item) => {
+            // Verificar se existe submenu "Sub-produtos" no banco para adicionar ao menu Contrato
+            if (item.slug === 'contrato-menu' && userMenus.length > 0) {
+              // Buscar menu Contratos no banco
+              const contratoMenuDB = userMenus.find(dbMenu => dbMenu.slug === 'contratos');
+              if (contratoMenuDB && contratoMenuDB.children && contratoMenuDB.children.length > 0) {
+                // Adicionar sub-produtos aos children se não existir
+                const hasSubprodutos = item.children?.some(child => child.slug === 'subprodutos');
+                if (!hasSubprodutos) {
+                  const subprodutosSubmenu = contratoMenuDB.children.find((child: any) => child.slug === 'subprodutos');
+                  if (subprodutosSubmenu) {
+                    item.children = item.children || [];
+                    item.children.push({
+                      title: 'Sub-produtos',
+                      slug: 'subprodutos',
+                      href: '/dashboard/contratos/subprodutos',
+                      icon: 'Package',
+                      description: 'Gestão de sub-produtos'
+                    });
+                  }
+                }
+              }
+            }
+            
+            return (
+              <MenuItemComponent 
+                key={item.slug} 
+                item={item} 
+                pathname={pathname} 
+                collapsed={collapsed} 
+              />
+            );
+          })}
         </nav>
 
         {/* Footer */}

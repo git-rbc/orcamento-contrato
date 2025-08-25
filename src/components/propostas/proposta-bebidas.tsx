@@ -6,6 +6,7 @@ import { Plus, Trash2, Tag } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Produto } from '@/types/database';
 import { SelecaoProdutoModal } from './selecao-produto-modal';
+import { SubprodutoSelectModal } from '@/components/subprodutos/subproduto-select-modal';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { LinhaItem } from './proposta-modal';
 
@@ -17,7 +18,9 @@ interface PropostaSecaoProps {
 
 export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubprodutoModalOpen, setIsSubprodutoModalOpen] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [activeParentProductId, setActiveParentProductId] = useState<string | null>(null);
   const [itemsComDescontoVisivel, setItensComDescontoVisivel] = useState<Set<string>>(new Set());
 
   const handleAddItem = () => {

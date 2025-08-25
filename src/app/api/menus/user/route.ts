@@ -155,97 +155,38 @@ export async function GET(request: NextRequest) {
     // Verificar autenticação
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      console.log('[MENUS API] Erro de autenticação:', authError)
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    // Verificar diretamente se é super admin pelo email do usuário autenticado
-    const isSuperAdminDirect = SUPER_ADMINS.includes(user.email || '');
+    // Buscar todos os menus ativos do banco de dados
+    const { data: menus, error } = await supabase
+      .from('menus')
+      .select('*')
+      .eq('ativo', true)
+      .order('ordem', { ascending: true });
 
-    if (isSuperAdminDirect) {
-      
-      try {
-        // Para super admins, buscar TODOS os menus ativos do banco
-        const { data: allMenusFromDB, error: menusError } = await supabase
-          .rpc('get_all_menus_hierarchy')
-
-        if (!menusError && allMenusFromDB && allMenusFromDB.length > 0) {
-          // Organizar menus em hierarquia
-          const organizedMenus = organizeMenusHierarchy(allMenusFromDB)
-          
-          return NextResponse.json({ 
-            success: true,
-            data: organizedMenus 
-          })
-        }
-      } catch (error) {
-        console.error('[MENUS API] Erro ao buscar menus do banco:', error)
-      }
-      
-      // Fallback: usar lista hardcoded se não conseguir buscar do banco
-      
+    if (error) {
+      console.error('Erro ao buscar menus:', error);
       return NextResponse.json({ 
         success: true,
-        data: ALL_MENUS 
-      })
+        data: [] 
+      });
     }
 
-    // Buscar perfil do usuário para outras verificações
-    const { data: userProfile, error: profileError } = await supabase
-      .from('users')
-      .select('email, role_id')
-      .eq('id', user.id)
-      .single()
+    // Organizar menus em hierarquia
+    const menusHierarchy = organizeMenusHierarchy(menus || []);
 
-    if (profileError) {
-      console.error('[MENUS API] Erro ao buscar perfil:', profileError)
-      return NextResponse.json({ 
-        success: true,
-        data: DEFAULT_MENUS 
-      })
-    }
-
-    // Verificar se é um super admin específico pelo perfil também
-    const isSuperAdmin = SUPER_ADMINS.includes(userProfile.email);
-
-    if (isSuperAdmin) {
-      return NextResponse.json({ 
-        success: true,
-        data: ALL_MENUS 
-      })
-    }
-
-    // Tentar buscar menus baseados no role se o usuário tiver role_id
-    if (userProfile.role_id) {
-      try {
-        const { data: roleMenus, error: roleMenusError } = await supabase
-          .rpc('get_user_menus', { user_id: user.id })
-
-        if (!roleMenusError && roleMenus && roleMenus.length > 0) {
-          // Organizar menus em hierarquia
-          const organizedMenus = organizeMenusHierarchy(roleMenus)
-          return NextResponse.json({ 
-            success: true,
-            data: organizedMenus 
-          })
-        }
-      } catch (error) {
-        console.error('[MENUS API] Erro ao buscar menus do role:', error)
-      }
-    }
-
-    // Fallback para menus básicos
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      data: DEFAULT_MENUS 
-    })
+      data: menusHierarchy
+    });
 
   } catch (error) {
-    console.error('[MENUS API] Erro inesperado:', error)
+    console.error('Erro na API de menus do usuário:', error);
     return NextResponse.json({ 
       success: true,
-      data: DEFAULT_MENUS 
-    })
+      data: [] 
+    });
   }
 }
 
