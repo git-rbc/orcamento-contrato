@@ -59,6 +59,9 @@ export function useInAppNotifications(): UseNotificationsReturn {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Você precisa estar logado para acessar as notificações');
+        }
         throw new Error(data.error || 'Erro ao carregar notificações');
       }
 
@@ -81,6 +84,9 @@ export function useInAppNotifications(): UseNotificationsReturn {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          return; // Silenciosamente falha para contador quando não autenticado
+        }
         throw new Error(data.error || 'Erro ao carregar contador');
       }
 
@@ -106,6 +112,9 @@ export function useInAppNotifications(): UseNotificationsReturn {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Você precisa estar logado para marcar notificações como lidas');
+        }
         throw new Error(data.error || 'Erro ao marcar como lida');
       }
 
@@ -145,6 +154,9 @@ export function useInAppNotifications(): UseNotificationsReturn {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Você precisa estar logado para marcar notificações como lidas');
+        }
         throw new Error(data.error || 'Erro ao marcar todas como lidas');
       }
 
@@ -181,6 +193,9 @@ export function useInAppNotifications(): UseNotificationsReturn {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Você precisa estar logado para deletar notificações');
+        }
         throw new Error(data.error || 'Erro ao deletar notificação');
       }
 
@@ -213,6 +228,9 @@ export function useInAppNotifications(): UseNotificationsReturn {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          return; // Silenciosamente falha para preferências quando não autenticado
+        }
         throw new Error(data.error || 'Erro ao carregar preferências');
       }
 
@@ -240,6 +258,9 @@ export function useInAppNotifications(): UseNotificationsReturn {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Você precisa estar logado para atualizar preferências');
+        }
         throw new Error(data.error || 'Erro ao atualizar preferências');
       }
 
