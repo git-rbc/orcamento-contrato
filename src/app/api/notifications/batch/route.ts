@@ -7,7 +7,7 @@ const batchNotificationSchema = z.object({
   emails: z.array(z.object({
     tipo: z.enum(['confirmacao', 'proposta', 'expirando', 'fila', 'disponivel']),
     data: z.record(z.any()), // Aceita qualquer objeto como dados
-  })).min(1).max(50), // Limite de 50 emails por lote para evitar sobrecarga
+  }).strict()).min(1).max(50), // Limite de 50 emails por lote para evitar sobrecarga
 });
 
 // Schema específico para processamento automático de expiração
@@ -92,7 +92,13 @@ export async function POST(request: NextRequest) {
 async function processarLoteGenerico(body: any) {
   const validatedData = batchNotificationSchema.parse(body);
   
-  const emailIds = await EmailService.enviarEmLote(validatedData.emails);
+  // Type cast para garantir os tipos corretos após validação
+  const emails = validatedData.emails as Array<{
+    tipo: 'confirmacao' | 'proposta' | 'expirando' | 'fila' | 'disponivel';
+    data: any;
+  }>;
+  
+  const emailIds = await EmailService.enviarEmLote(emails);
   
   return {
     emailIds,

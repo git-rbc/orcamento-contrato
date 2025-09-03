@@ -48,7 +48,13 @@
       "mcp__serena__get_symbols_overview",
       "Bash(npm run typecheck:*)",
       "mcp__serena__activate_project",
-      "mcp__serena__onboarding"
+      "mcp__serena__onboarding",
+      "WebFetch(domain:docs.google.com)",
+      "Bash(dir)",
+      "Bash(timeout:*)",
+      "mcp__serena__find_symbol",
+      "mcp__serena__replace_symbol_body",
+      "mcp__serena__insert_after_symbol"
     ]
   },
   "enableAllProjectMcpServers": true,

@@ -87,7 +87,8 @@ export function useInAppNotifications(): UseNotificationsReturn {
         if (response.status === 401) {
           return; // Silenciosamente falha para contador quando não autenticado
         }
-        throw new Error(data.error || 'Erro ao carregar contador');
+        console.error('Erro ao carregar contador:', data.error || 'Erro desconhecido');
+        return; // Não lança erro para contadores
       }
 
       if (data.success) {

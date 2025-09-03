@@ -11,6 +11,7 @@ import { CalendarView } from '@/components/calendario/calendar-view';
 import { CalendarFilters } from '@/components/calendario/calendar-filters';
 import { CalendarDetailModal } from '@/components/calendario/calendar-detail-modal';
 import { CalendarEventForm } from '@/components/calendario/calendar-event-form';
+import { ModalAgendamento } from '@/components/agendamento/modal-agendamento';
 import { useCalendario } from '@/hooks/useCalendario';
 import { useReservasTemporarias } from '@/hooks/useReservasTemporarias';
 import { useFilaEspera } from '@/hooks/useFilaEspera';
@@ -22,7 +23,23 @@ export default function CalendarioPage() {
   const [viewType, setViewType] = useState<'month' | 'week' | 'day'>('month');
   const [showFilters, setShowFilters] = useState(false);
   const [showEventForm, setShowEventForm] = useState(false);
+  const [showAgendamento, setShowAgendamento] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [slotSelecionado, setSlotSelecionado] = useState<{data: string, hora: string, vendedor?: string} | null>(null);
+  const [agendamentoData, setAgendamentoData] = useState({
+    cliente_id: '',
+    cliente_nome: '',
+    telefone: '',
+    vendedor_id: '',
+    data: '',
+    hora_inicio: '',
+    hora_fim: '',
+    local_atendimento: 'online',
+    status_local: 'online',
+    cidade: '',
+    tipo: 'reuniao' as 'reuniao' | 'reserva_temporaria' | 'fila_espera',
+    observacoes: ''
+  });
   const [filters, setFilters] = useState({
     espacoId: 'todos',
     status: 'todos',
@@ -99,8 +116,33 @@ export default function CalendarioPage() {
   };
 
   const handleDateClick = (date: Date) => {
-    setSelectedDate(date);
-    setShowEventForm(true);
+    // Configurar dados para o modal de agendamento
+    const dataFormatada = format(date, 'yyyy-MM-dd');
+    const horaInicio = '09:00';
+    const horaFim = '10:00';
+    
+    setSlotSelecionado({ 
+      data: dataFormatada, 
+      hora: horaInicio, 
+      vendedor: 'Sistema' // Placeholder quando não há vendedor específico
+    });
+    
+    setAgendamentoData({
+      cliente_id: '',
+      cliente_nome: '',
+      telefone: '',
+      vendedor_id: '',
+      data: dataFormatada,
+      hora_inicio: horaInicio,
+      hora_fim: horaFim,
+      local_atendimento: 'online',
+      status_local: 'online',
+      cidade: '',
+      tipo: 'reuniao',
+      observacoes: ''
+    });
+    
+    setShowAgendamento(true);
   };
 
   const handleCreateEvent = async (data: any) => {
@@ -197,6 +239,54 @@ export default function CalendarioPage() {
       toast.success('Você entrou na fila de espera!');
     } catch (error) {
       toast.error('Erro ao entrar na fila de espera');
+    }
+  };
+  const handleSalvarAgendamento = async (dados: any) => {
+    try {
+      const endpoint = '/api/agendamento/agenda-integrada';
+      const requestData = {
+        acao: dados.tipo === 'reuniao' ? 'criar_reuniao' : 
+              dados.tipo === 'reserva_temporaria' ? 'criar_reserva' : 'criar_fila',
+        dados: {
+          cliente_id: dados.cliente_id,
+          cliente_nome: dados.cliente_nome,
+          telefone: dados.telefone,
+          vendedor_id: dados.vendedor_id,
+          vendedor_nome: slotSelecionado?.vendedor,
+          data: dados.data,
+          hora_inicio: dados.hora_inicio,
+          hora_fim: dados.hora_fim,
+          local_atendimento: dados.local_atendimento,
+          status_local: dados.status_local,
+          cidade: dados.cidade,
+          observacoes: dados.observacoes
+        }
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestData)
+      });
+
+      if (response.ok) {
+        toast.success(`${dados.tipo === 'reuniao' ? 'Reunião' : 
+                     dados.tipo === 'reserva_temporaria' ? 'Reserva' : 
+                     'Fila de espera'} agendada com sucesso`);
+        setShowAgendamento(false);
+        // Recarregar dados do calendário
+        await fetchReservas(
+          startOfMonth(currentDate),
+          endOfMonth(currentDate),
+          filters
+        );
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao agendar');
+      }
+    } catch (error) {
+      console.error('Erro ao agendar:', error);
+      toast.error(error instanceof Error ? error.message : 'Erro ao agendar');
     }
   };
 
@@ -408,6 +498,19 @@ export default function CalendarioPage() {
           clientes={clientes}
         />
       )}
+
+      {/* Modal de Agendamento da Grade */}
+      <ModalAgendamento
+        open={showAgendamento}
+        onClose={() => {
+          setShowAgendamento(false);
+          setSlotSelecionado(null);
+        }}
+        onSalvar={handleSalvarAgendamento}
+        slotSelecionado={slotSelecionado}
+        agendamentoData={agendamentoData}
+        setAgendamentoData={setAgendamentoData}
+      />
     </div>
   );
 }

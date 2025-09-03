@@ -16,6 +16,12 @@ export async function GET(request: NextRequest) {
     const espacoId = searchParams.get('espaco_id');
     const status = searchParams.get('status');
     const tipoReuniaoId = searchParams.get('tipo_reuniao_id');
+    
+    // Novos filtros da Fase 4
+    const preVendedorId = searchParams.get('pre_vendedor_id');
+    const localAtendimento = searchParams.get('local_atendimento');
+    const origem = searchParams.get('origem');
+    const campanha = searchParams.get('campanha');
 
     let query = supabase
       .from('v_reunioes_completa')
@@ -47,6 +53,24 @@ export async function GET(request: NextRequest) {
 
     if (tipoReuniaoId && tipoReuniaoId !== 'todos') {
       query = query.eq('tipo_reuniao_id', tipoReuniaoId);
+    }
+
+    // Novos filtros da Fase 4
+    if (preVendedorId && preVendedorId !== 'todos') {
+      query = query.eq('pre_vendedor_id', preVendedorId);
+    }
+
+    if (localAtendimento && localAtendimento !== 'todos') {
+      query = query.eq('local_atendimento', localAtendimento);
+    }
+
+    // Filtros de origem e campanha através da tabela de clientes
+    if (origem && origem !== 'todos') {
+      query = query.eq('cliente_origem', origem);
+    }
+
+    if (campanha && campanha !== 'todos') {
+      query = query.eq('cliente_campanha', campanha);
     }
 
     const { data, error } = await query.order('data', { ascending: true }).order('hora_inicio', { ascending: true });

@@ -21,15 +21,31 @@ export interface Reuniao {
   lembrete_enviado: boolean;
   created_at: string;
   updated_at: string;
+  
+  // Novos campos da Fase 4
+  pre_vendedor_id?: string;
+  resumo_reuniao?: string;
+  local_atendimento?: string;
+  cor_agenda?: string;
+  cupom_desconto_id?: string;
+  data_entrada_lead?: string;
+  reserva_temporaria_id?: string;
+  
   // Campos das views/joins
   cliente_nome?: string;
   cliente_email?: string;
+  cliente_telefone?: string;
+  cliente_origem?: string;
+  cliente_campanha?: string;
   vendedor_nome?: string;
   vendedor_email?: string;
   tipo_reuniao_nome?: string;
   tipo_reuniao_cor?: string;
   espaco_nome?: string;
   espaco_cidade?: string;
+  pre_vendedor_nome?: string;
+  local_atendimento_nome?: string;
+  local_atendimento_cor?: string;
 }
 
 export interface ReuniaoFilters {
@@ -40,6 +56,13 @@ export interface ReuniaoFilters {
   dataInicio?: string;
   dataFim?: string;
   search?: string;
+  // Novos filtros da Fase 4
+  preVendedorId?: string;
+  localAtendimento?: string;
+  origem?: string;
+  campanha?: string;
+  confirmada?: boolean;
+  espacoSalaId?: string;
 }
 
 export interface TipoReuniao {
@@ -65,6 +88,87 @@ export interface DisponibilidadeCheck {
     hora_fim: string;
     duracao_minutos: number;
   }[];
+}
+
+// Novas interfaces da Fase 4
+export interface VendedorPerformance {
+  id: string;
+  vendedor_id: string;
+  periodo: string;
+  total_reunioes: number;
+  total_contratos: number;
+  taxa_conversao: number;
+  ranking_geral: number;
+  ranking_online: number;
+  ranking_presencial: number;
+  ranking_10_dias: number;
+  created_at: string;
+  updated_at: string;
+  // Campos de join
+  vendedor_nome?: string;
+  vendedor_email?: string;
+}
+
+export interface ReuniaoResultado {
+  id: string;
+  reuniao_id: string;
+  resultado: 'sucesso' | 'reagendamento' | 'cancelamento' | 'conversao' | 'sem_interesse' | 'follow_up' | 'proposta_enviada';
+  valor_estimado_negocio: number;
+  proximos_passos?: string;
+  data_follow_up?: string;
+  observacoes?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  // Campos de join
+  reuniao_titulo?: string;
+  cliente_nome?: string;
+  created_by_nome?: string;
+}
+
+export interface LocalAtendimento {
+  id: string;
+  nome: string;
+  codigo: string;
+  cor: string;
+  tipo: 'virtual' | 'presencial' | 'treinamento';
+  cidade?: string;
+  endereco?: string;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EspacoSala {
+  id: string;
+  local_id: string;
+  nome: string;
+  capacidade: number;
+  tipo: 'sala_reuniao' | 'espaco_evento' | 'sala_virtual' | 'auditorio' | 'sala_treinamento';
+  equipamentos: any;
+  descricao?: string;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+  // Campos de join
+  local_nome?: string;
+  local_cidade?: string;
+  local_cor?: string;
+}
+
+export interface FormularioReuniao {
+  id: string;
+  reuniao_id: string;
+  tipo: 'pre_meeting' | 'post_meeting' | 'feedback' | 'avaliacao_cliente' | 'follow_up';
+  preenchido_por: string;
+  dados: any;
+  observacoes?: string;
+  created_at: string;
+  updated_at: string;
+  // Campos de join
+  reuniao_titulo?: string;
+  cliente_nome?: string;
+  preenchido_por_nome?: string;
 }
 
 export function useReunioes() {

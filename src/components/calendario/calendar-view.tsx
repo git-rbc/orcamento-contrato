@@ -251,14 +251,18 @@ export function CalendarView({
           return (
             <div
               key={day.toISOString()}
-              onClick={() => onDateClick(day)}
+              onClick={() => {
+                console.log('Data clicada:', format(day, 'yyyy-MM-dd'));
+                onDateClick(day);
+              }}
               className={cn(
                 'min-h-[100px] p-2 border rounded-lg cursor-pointer transition-colors',
-                'hover:bg-accent/50',
+                'hover:bg-accent/50 hover:shadow-md',
                 !isCurrentMonth && 'opacity-50 bg-muted/30',
                 isToday(day) && 'ring-2 ring-primary',
                 dayEvents.bloqueios.length > 0 && 'bg-red-50 dark:bg-red-950/20'
               )}
+              title={`Clique para agendar em ${format(day, 'dd/MM/yyyy', { locale: ptBR })}`}
             >
               <div className="flex justify-between items-start mb-1">
                 <span

@@ -155,7 +155,9 @@ export default function UsuariosPage() {
       const senhaGerada = gerarSenhaAutomatica(12);
       
       const dadosUsuario: CreateUserDTO = {
-        ...data,
+        nome: data.nome,
+        email: data.email,
+        role_id: data.role_id,
         password: senhaGerada,
         ativo: true
       };

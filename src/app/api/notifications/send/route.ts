@@ -124,31 +124,45 @@ export async function POST(request: NextRequest) {
     // Enviar notificação baseada no tipo
     switch (validatedData.tipo) {
       case 'confirmacao':
-        emailId = await EmailService.enviarConfirmacaoInteresse(validatedData.dados);
+        emailId = await EmailService.enviarConfirmacaoInteresse(
+          validatedData.dados as import('@/services/email-service').ConfirmacaoInteresseData
+        );
         break;
       
       case 'proposta':
-        emailId = await EmailService.enviarPropostaGerada(validatedData.dados);
+        emailId = await EmailService.enviarPropostaGerada(
+          validatedData.dados as import('@/services/email-service').PropostaGeradaData
+        );
         break;
       
       case 'expirando':
-        emailId = await EmailService.enviarReservaExpirando(validatedData.dados);
+        emailId = await EmailService.enviarReservaExpirando(
+          validatedData.dados as import('@/services/email-service').ReservaExpirandoData
+        );
         break;
       
       case 'fila':
-        emailId = await EmailService.enviarPosicaoFilaAtualizada(validatedData.dados);
+        emailId = await EmailService.enviarPosicaoFilaAtualizada(
+          validatedData.dados as import('@/services/email-service').PosicaoFilaData
+        );
         break;
       
       case 'disponivel':
-        emailId = await EmailService.enviarDataDisponivel(validatedData.dados);
+        emailId = await EmailService.enviarDataDisponivel(
+          validatedData.dados as import('@/services/email-service').DataDisponivelData
+        );
         break;
       
       case 'relatorio':
-        emailId = await EmailService.enviarRelatorioDiario(validatedData.dados);
+        emailId = await EmailService.enviarRelatorioDiario(
+          validatedData.dados as import('@/services/email-service').RelatorioDiarioData
+        );
         break;
       
       case 'alta-demanda':
-        emailId = await EmailService.enviarAlertaAltaDemanda(validatedData.dados);
+        emailId = await EmailService.enviarAlertaAltaDemanda(
+          validatedData.dados as import('@/services/email-service').AltaDemandaData
+        );
         break;
       
       default:

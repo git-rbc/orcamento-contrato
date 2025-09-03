@@ -31,7 +31,10 @@ import {
   Ban,
   BarChart3,
   Timer,
-  TrendingUp
+  TrendingUp,
+  MessageSquare,
+  List,
+  CalendarDays
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -68,18 +71,18 @@ const AVAILABLE_MENUS: MenuItem[] = [
     description: 'Sistema de agendamento de reuniões',
     children: [
       {
-        title: 'Agendamento',
-        slug: 'agendamento-principal',
-        href: '/dashboard/agendamento',
-        icon: 'Calendar',
-        description: 'Página principal de agendamento'
-      },
-      {
         title: 'Reuniões',
         slug: 'agendamento-reunioes',
         href: '/dashboard/agendamento/reunioes',
         icon: 'Users',
         description: 'Gestão de reuniões'
+      },
+      {
+        title: 'Agenda Integrada',
+        slug: 'agendamento-agenda-integrada',
+        href: '/dashboard/agendamento/agenda-integrada',
+        icon: 'CalendarDays',
+        description: 'Visualização unificada com reuniões, reservas e fila de espera'
       },
       {
         title: 'Disponibilidade',
@@ -101,6 +104,13 @@ const AVAILABLE_MENUS: MenuItem[] = [
         href: '/dashboard/agendamento/dashboard',
         icon: 'BarChart3',
         description: 'Métricas de agendamento'
+      },
+      {
+        title: 'Performance Vendedores',
+        slug: 'agendamento-performance',
+        href: '/dashboard/agendamento/performance',
+        icon: 'TrendingUp',
+        description: 'Rankings (Geral, Online, Presencial, 10 dias)'
       }
     ]
   },
@@ -266,7 +276,10 @@ const iconMap: Record<string, any> = {
   Ban,
   BarChart3,
   Timer,
-  TrendingUp
+  TrendingUp,
+  MessageSquare,
+  List,
+  CalendarDays
 };
 
 // Componente para renderizar itens de menu (incluindo submenus)
