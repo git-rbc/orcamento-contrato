@@ -268,15 +268,24 @@ export function ModalAgendamento({
               onValueChange={(tipo: 'reuniao' | 'reserva_temporaria' | 'fila_espera') => 
                 setAgendamentoData(prev => ({ ...prev, tipo }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className={agendamentoData.tipo === 'fila_espera' ? 'border-amber-400 bg-amber-50' : ''}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="reuniao">Reunião</SelectItem>
-                <SelectItem value="reserva_temporaria">Reserva Temporária</SelectItem>
-                <SelectItem value="fila_espera">Fila de Espera</SelectItem>
+                <SelectItem value="reuniao">📅 Reunião Confirmada</SelectItem>
+                <SelectItem value="reserva_temporaria">⏰ Reserva Temporária</SelectItem>
+                <SelectItem value="fila_espera">⌛ Fila de Espera</SelectItem>
               </SelectContent>
             </Select>
+            {agendamentoData.tipo === 'fila_espera' && (
+              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="text-amber-600 mt-0.5">⚠️</div>
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium">Adicionado à fila de espera</p>
+                  <p className="text-amber-700">Detectado conflito de horário/cidade. O cliente será notificado quando uma vaga estiver disponível.</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Observações */}

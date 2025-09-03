@@ -288,9 +288,37 @@ export function GradeAgendamento({
     return 'online'; // Padrão
   }
 
+  // Função para verificar conflitos de horário/cidade
+  function verificarConflito(data: string, hora: string) {
+    const horaFormatada = hora.substring(0, 5);
+    
+    // Buscar eventos no mesmo horário (qualquer vendedor)
+    const eventosNoHorario = eventos.filter(evento => {
+      const eventoHora = evento.hora_inicio.substring(0, 5);
+      return evento.data === data && eventoHora === horaFormatada;
+    });
+    
+    // Se há eventos no mesmo horário, verificar se há conflito de cidade
+    for (const evento of eventosNoHorario) {
+      // Se evento for presencial e tiver cidade definida
+      if (evento.local_atendimento === 'presencial' && evento.local_nome && evento.local_nome !== 'ONLINE') {
+        return {
+          hasConflict: true,
+          cidade: evento.local_nome,
+          evento: evento.cliente_nome
+        };
+      }
+    }
+    
+    return { hasConflict: false };
+  }
+
   function handleSlotClick(data: string, hora: string, vendedorId: string, vendedorNome: string) {
     const dataFormatada = format(parseISO(data), 'yyyy-MM-dd');
     const horaFim = calcularHoraFim(hora);
+    
+    // Verificar conflitos de horário/cidade
+    const conflito = verificarConflito(dataFormatada, hora);
     
     setSlotSelecionado({ data: dataFormatada, hora, vendedor: vendedorNome });
     setAgendamentoData({
@@ -304,9 +332,19 @@ export function GradeAgendamento({
       local_atendimento: 'online',
       status_local: 'online',
       cidade: '',
-      tipo: 'reuniao',
+      tipo: conflito.hasConflict ? 'fila_espera' : 'reuniao',
       observacoes: ''
     });
+    
+    // Mostrar notificação se há conflito
+    if (conflito.hasConflict) {
+      toast({
+        title: "Conflito de Horário Detectado",
+        description: `Já existe agendamento às ${hora} em ${conflito.cidade}. Será adicionado à fila de espera automaticamente.`,
+        variant: "default"
+      });
+    }
+    
     setShowAgendamento(true);
   }
 
