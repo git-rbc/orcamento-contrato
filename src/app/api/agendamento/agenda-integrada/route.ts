@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
         precisa_confirmacao_cliente: !evento.confirmada_cliente,
         precisa_confirmacao_vendedor: !evento.confirmada_vendedor,
         horas_ate_expirar: null, // Apenas para reuniões agendadas
-        pontuacao_fila: null // Apenas para fila de espera
+        pontuacao: null // Apenas para fila de espera
       };
     }) || [];
 
@@ -158,8 +158,8 @@ export async function GET(request: NextRequest) {
       
       fila_alta_prioridade: eventosTransformados.filter(e => 
         e.tipo_evento === 'fila_espera' &&
-        e.pontuacao_fila !== null &&
-        e.pontuacao_fila >= 70
+        e.pontuacao !== null &&
+        e.pontuacao >= 70
       ).length,
       
       taxa_ocupacao: Math.round((eventosTransformados.length / 100) * 100), // Temporário
@@ -612,25 +612,44 @@ async function criarReservaTemporaria(supabase: any, dados: any) {
 async function criarFilaEspera(supabase: any, dados: any) {
   try {
     // Buscar o ID do vendedor pelo nome ou usar o ID se já fornecido
-    let vendedorPreferidoId = dados.vendedor_id;
-    if (!vendedorPreferidoId && dados.vendedor_nome) {
+    let usuarioId = dados.vendedor_id;
+    if (!usuarioId && dados.vendedor_nome) {
       const { data: vendedor } = await supabase
         .from('users')
         .select('id')
-        .eq('name', dados.vendedor_nome)
+        .eq('nome', dados.vendedor_nome)
         .single();
-      vendedorPreferidoId = vendedor?.id;
+      usuarioId = vendedor?.id;
     }
     
+    // Precisamos de um espaco_evento_id para a fila de espera
+    // Por enquanto, vamos pegar o primeiro espaço disponível
+    const { data: espacos } = await supabase
+      .from('espacos_eventos')
+      .select('id')
+      .eq('ativo', true)
+      .limit(1);
+
+    const espacoEventoId = espacos?.[0]?.id || null;
+
+    if (!espacoEventoId) {
+      throw new Error('Nenhum espaço disponível encontrado para criar fila de espera');
+    }
+
     const novaFila = {
-      cliente_nome: dados.cliente_nome,
-      vendedor_preferido_id: vendedorPreferidoId,
-      data_preferida: dados.data,
-      status: 'aguardando',
-      observacoes: dados.observacoes,
+      espaco_evento_id: espacoEventoId,
+      cliente_id: dados.cliente_id,
+      usuario_id: usuarioId,
+      data_inicio: dados.data,
+      data_fim: dados.data, // Mesma data por agora
+      prioridade: await calcularProximaPrioridade(supabase),
+      pontuacao: 50, // Pontuação padrão
+      valor_estimado_proposta: null,
+      notificado: false,
+      convertida_em_reuniao: false,
+      status_local_agenda: dados.status_local,
       telefone_cliente: dados.telefone,
-      prioridade_fila: await calcularProximaPrioridade(supabase),
-      status_local_agenda: dados.status_local
+      cidade: dados.cidade
     };
 
     const { data: filaCriada, error } = await supabase
@@ -659,8 +678,8 @@ async function calcularProximaPrioridade(supabase: any): Promise<number> {
   try {
     const { data, error } = await supabase
       .from('fila_espera')
-      .select('prioridade_fila')
-      .order('prioridade_fila', { ascending: false })
+      .select('prioridade')
+      .order('prioridade', { ascending: false })
       .limit(1)
       .single();
 
@@ -668,7 +687,7 @@ async function calcularProximaPrioridade(supabase: any): Promise<number> {
       throw error;
     }
 
-    return (data?.prioridade_fila || 0) + 1;
+    return (data?.prioridade || 0) + 1;
   } catch (error) {
     console.error('Erro ao calcular prioridade:', error);
     return 1;

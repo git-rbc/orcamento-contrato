@@ -51,8 +51,8 @@ interface EventoIntegrado {
   // Campos específicos
   expira_em?: string; // Para reservas temporárias
   horas_ate_expirar?: number;
-  pontuacao_fila?: number; // Para fila de espera  
-  prioridade_fila?: number;
+  pontuacao?: number; // Para fila de espera  
+  prioridade?: number;
   precisa_confirmacao_cliente: boolean;
   precisa_confirmacao_vendedor: boolean;
 }
@@ -687,10 +687,10 @@ export function AgendaIntegrada() {
               {eventosFiltrados.filter(e => e.tipo_evento === 'fila_espera').length}
             </div>
             <p className="text-sm text-muted-foreground">Na Fila de Espera</p>
-            {eventosFiltrados.filter(e => e.tipo_evento === 'fila_espera' && e.pontuacao_fila && e.pontuacao_fila >= 70).length > 0 && (
+            {eventosFiltrados.filter(e => e.tipo_evento === 'fila_espera' && e.pontuacao && e.pontuacao >= 70).length > 0 && (
               <Badge variant="secondary" className="mt-1">
                 <Star className="h-3 w-3 mr-1" />
-                {eventosFiltrados.filter(e => e.tipo_evento === 'fila_espera' && e.pontuacao_fila && e.pontuacao_fila >= 70).length} prioritários
+                {eventosFiltrados.filter(e => e.tipo_evento === 'fila_espera' && e.pontuacao && e.pontuacao >= 70).length} prioritários
               </Badge>
             )}
           </CardContent>
@@ -849,7 +849,22 @@ export function AgendaIntegrada() {
                     />
                     <span className="text-sm font-medium">{local.nome}</span>
                     <Badge variant="outline" className="text-xs">
-                      {agendaData?.estatisticas.por_local[local.codigo] || 0}
+                      {(() => {
+                        // Mapear código do local para o valor usado na estatística por_local
+                        const mapeamentoLocal: Record<string, string> = {
+                          'ONL': 'online',
+                          'BLU': 'presencial',
+                          'FLN': 'presencial', 
+                          'ITA': 'presencial',
+                          'JOI': 'presencial',
+                          'NOV': 'presencial',
+                          'APS': 'presencial',
+                          'TRE': 'treinamento'
+                        };
+                        
+                        const localKey = mapeamentoLocal[local.codigo] || local.codigo.toLowerCase();
+                        return agendaData?.estatisticas.por_local[localKey] || 0;
+                      })()}
                     </Badge>
                   </div>
                 ))}
@@ -1025,7 +1040,7 @@ export function AgendaIntegrada() {
                                   {evento.tipo_evento === 'fila_espera' && (
                                     <div className="flex items-center gap-1 text-gray-600">
                                       <Hash className="h-3 w-3" />
-                                      <span className="text-xs">#{evento.prioridade_fila} na fila</span>
+                                      <span className="text-xs">#{evento.prioridade} na fila</span>
                                     </div>
                                   )}
                                   
@@ -1189,7 +1204,7 @@ export function AgendaIntegrada() {
                                   {getTipoEventoIcon(evento.tipo_evento)}
                                   <span className="font-medium text-xs">
                                     {evento.tipo_evento === 'fila_espera' 
-                                      ? `#${evento.prioridade_fila || '?'}`
+                                      ? `#${evento.prioridade || '?'}`
                                       : evento.hora_inicio?.substring(0, 5) || 'S/H'
                                     }
                                   </span>
@@ -1311,7 +1326,7 @@ export function AgendaIntegrada() {
                           <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
                             <div className="flex items-center gap-2 text-gray-700">
                               <Hash className="h-3 w-3" />
-                              Posição #{evento.prioridade_fila} | Pontuação: {evento.pontuacao_fila}
+                              Posição #{evento.prioridade} | Pontuação: {evento.pontuacao}
                             </div>
                           </div>
                         )}
@@ -1422,11 +1437,11 @@ export function AgendaIntegrada() {
                   <>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Posição na fila:</span>
-                      <Badge variant="secondary">#{selectedEvento.prioridade_fila}</Badge>
+                      <Badge variant="secondary">#{selectedEvento.prioridade}</Badge>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Pontuação:</span>
-                      <Badge variant="outline">{selectedEvento.pontuacao_fila} pontos</Badge>
+                      <Badge variant="outline">{selectedEvento.pontuacao} pontos</Badge>
                     </div>
                   </>
                 )}
