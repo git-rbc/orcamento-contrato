@@ -115,6 +115,7 @@ export function GradeAgendamento({
     currentDate: format(currentDate, 'yyyy-MM-dd')
   });
   const [showAgendamento, setShowAgendamento] = useState(false);
+  const [tipoPeriodo, setTipoPeriodo] = useState<'dia' | 'semana'>('semana');
   const [slotSelecionado, setSlotSelecionado] = useState<{data: string, hora: string, vendedor?: string} | null>(null);
   const [eventoEditando, setEventoEditando] = useState<EventoIntegrado | null>(null);
   const [modoEdicao, setModoEdicao] = useState(false);
@@ -217,54 +218,43 @@ export function GradeAgendamento({
     return horas;
   }, []);
 
-  // Datas da semana atual
-  const diasSemana = useMemo(() => {
+  // Datas baseadas no tipo de período selecionado
+  const diasPeriodo = useMemo(() => {
     const inicio = startOfDay(currentDate);
     const dias = [];
-    for (let i = 0; i < 7; i++) {
+    const numeroDias = tipoPeriodo === 'dia' ? 1 : 7;
+    
+    for (let i = 0; i < numeroDias; i++) {
       dias.push(addDays(inicio, i));
     }
+    console.log(`Dias do período (${tipoPeriodo}):`, dias.map(d => format(d, 'dd/MM')));
     return dias;
-  }, [currentDate]);
+  }, [currentDate, tipoPeriodo]);
 
-  // Organizar eventos por data, hora e vendedor
+  // Organizar eventos por data e hora (para nova estrutura por dias)
   const eventosOrganizados = useMemo(() => {
-    const organizados: Record<string, EventoIntegrado> = {};
+    const organizados: Record<string, EventoIntegrado[]> = {};
     
-    console.log('Debug - Processando eventos:', {
+    console.log('Debug - Processando eventos para múltiplos dias:', {
       totalEventos: eventos.length,
-      totalVendedores: vendedores.length,
-      eventosAmostra: eventos.slice(0, 3).map(e => ({
-        cliente: e.cliente_nome,
-        vendedor: e.vendedor_nome,
-        data: e.data,
-        hora: e.hora_inicio
-      })),
-      vendedoresAmostra: vendedores.slice(0, 3).map(v => ({ id: v.id, nome: v.nome }))
+      periodoSelecionado: tipoPeriodo,
+      diasPeriodo: diasPeriodo.length
     });
     
     eventos.forEach(evento => {
-      // Tentar encontrar o vendedor pelo nome
-      const vendedor = vendedores.find(v => v.nome === evento.vendedor_nome);
+      // Normalizar hora_inicio para formato HH:MM (remover segundos se existir)
+      const horaNormalizada = evento.hora_inicio.substring(0, 5);
+      const chave = `${evento.data}_${horaNormalizada}`;
       
-      if (vendedor) {
-        // Se encontrou o vendedor, usar o ID dele
-        // Normalizar hora_inicio para formato HH:MM (remover segundos se existir)
-        const horaNormalizada = evento.hora_inicio.substring(0, 5);
-        const chave = `${evento.data}_${horaNormalizada}_${vendedor.id}`;
-        organizados[chave] = evento;
-        
-        console.log('Evento organizado:', { chave, evento: evento.cliente_nome, vendedor: vendedor.nome });
-      } else {
-        console.warn('Vendedor não encontrado para evento:', evento.vendedor_nome, 'Evento:', evento.cliente_nome);
-        console.warn('Vendedores disponíveis:', vendedores.map(v => v.nome));
+      if (!organizados[chave]) {
+        organizados[chave] = [];
       }
+      organizados[chave].push(evento);
     });
     
-    console.log('Eventos organizados total:', Object.keys(organizados).length);
-    console.log('Chaves organizadas:', Object.keys(organizados));
+    console.log('Eventos organizados por data/hora:', Object.keys(organizados).length);
     return organizados;
-  }, [eventos, vendedores]);
+  }, [eventos, diasPeriodo, tipoPeriodo]);
 
   // Cores específicas por status/local conforme planilha
   function getCorPorStatus(status: string): string {
@@ -509,58 +499,71 @@ export function GradeAgendamento({
           <div className="flex justify-between items-center">
             <CardTitle className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
-              Grade de Agendamento - Semana
+              Grade de Agendamento - {tipoPeriodo === 'dia' ? 'Dia' : 'Semana'}
             </CardTitle>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => onNavigate(subDays(currentDate, 7))}>
+              <Select value={tipoPeriodo} onValueChange={(value: 'dia' | 'semana') => setTipoPeriodo(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dia">📅 Por Dia</SelectItem>
+                  <SelectItem value="semana">📆 Por Semana</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" size="sm" onClick={() => onNavigate(subDays(currentDate, tipoPeriodo === 'dia' ? 1 : 7))}>
                 <ChevronLeft className="h-4 w-4" />
                 Anterior
               </Button>
               <Button variant="outline" size="sm" onClick={() => onNavigate(new Date())}>
                 Hoje
               </Button>
-              <Button variant="outline" size="sm" onClick={() => onNavigate(addDays(currentDate, 7))}>
+              <Button variant="outline" size="sm" onClick={() => onNavigate(addDays(currentDate, tipoPeriodo === 'dia' ? 1 : 7))}>
                 Próxima
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Hoje: {format(new Date(), 'dd/MM/yyyy', { locale: ptBR })} | {vendedores.length} vendedores ativos
+            {tipoPeriodo === 'dia' ? (
+              `Dia: ${format(currentDate, 'dd/MM/yyyy', { locale: ptBR })}`
+            ) : (
+              `Semana: ${format(diasPeriodo[0], 'dd/MM', { locale: ptBR })} a ${format(diasPeriodo[6], 'dd/MM/yyyy', { locale: ptBR })}`
+            )} | {vendedores.length} vendedores ativos
           </p>
         </CardHeader>
         
         <CardContent>
           <div className="overflow-x-auto">
             <div className="min-w-[1200px]">
-              {/* Cabeçalho da grade - NOVA ESTRUTURA */}
+              {/* Cabeçalho da grade - NOVA ESTRUTURA POR DIAS */}
               <div className="border rounded-lg overflow-hidden">
-                {/* Header com vendedores */}
-                <div className="grid gap-1 p-2 bg-muted/30 border-b" style={{ gridTemplateColumns: '80px repeat(' + Math.min(vendedores.length, 7) + ', minmax(90px, 150px))' }}>
+                {/* Header com dias da semana */}
+                <div className="grid gap-1 p-2 bg-muted/30 border-b" style={{ gridTemplateColumns: '80px repeat(' + diasPeriodo.length + ', minmax(120px, 1fr))' }}>
                   <div className="p-2 text-sm font-medium text-center">
                     Horário
                   </div>
-                  {loading ? (
-                    <div className="p-4 text-center text-muted-foreground text-sm">
-                      Carregando vendedores...
-                    </div>
-                  ) : (
-                    vendedores.slice(0, 7).map((vendedor) => {
-                      const eventosVendedor = eventos.filter(e => e.vendedor_nome === vendedor.nome).length;
-                      const taxa = eventosVendedor > 0 ? Math.min(Math.round((eventosVendedor / 10) * 100), 100) : 0;
-                      
-                      return (
-                        <div key={vendedor.id} className="p-1 text-sm font-medium text-center bg-background rounded border">
-                          <div className="truncate font-semibold" title={vendedor.nome}>
-                            {vendedor.nome}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {eventosVendedor} eventos | {taxa}%
-                          </div>
+                  {diasPeriodo.map((dia) => {
+                    const dataStr = format(dia, 'yyyy-MM-dd');
+                    const eventosDia = eventos.filter(e => e.data === dataStr).length;
+                    const isToday = isSameDay(dia, new Date());
+                    
+                    return (
+                      <div key={dataStr} className={`p-1 text-sm font-medium text-center rounded border ${
+                        isToday ? 'bg-primary/10 border-primary/20' : 'bg-background'
+                      }`}>
+                        <div className={`font-semibold ${isToday ? 'text-primary' : ''}`}>
+                          {format(dia, 'EEE', { locale: ptBR }).toUpperCase()}
                         </div>
-                      );
-                    })
-                  )}
+                        <div className={`text-xs ${isToday ? 'text-primary' : 'text-muted-foreground'} mt-1`}>
+                          {format(dia, 'dd/MM')}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {eventosDia} eventos
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 
                 {/* Grade de horários - UMA LINHA POR HORÁRIO */}
@@ -569,7 +572,7 @@ export function GradeAgendamento({
                     <div 
                       key={hora} 
                       className="grid gap-1 p-1 hover:bg-muted/20 transition-colors" 
-                      style={{ gridTemplateColumns: '80px repeat(' + Math.min(vendedores.length, 7) + ', minmax(90px, 150px))' }}
+                      style={{ gridTemplateColumns: '80px repeat(' + diasPeriodo.length + ', minmax(120px, 1fr))' }}
                     >
                       {/* Coluna de horário */}
                       <div className="p-2 text-sm font-medium text-center border-r flex items-center justify-center bg-muted/10">
@@ -577,81 +580,77 @@ export function GradeAgendamento({
                         {hora}
                       </div>
                       
-                      {/* Slots por vendedor para HOJE (primeiro dia) */}
-                      {loading ? (
-                        <div className="p-2 text-center text-muted-foreground text-xs">
-                          Carregando...
-                        </div>
-                      ) : (
-                        vendedores.slice(0, 7).map((vendedor) => {
-                          // Buscar eventos para hoje (data atual)
-                          const hoje = new Date();
-                          const dataStr = format(hoje, 'yyyy-MM-dd');
-                          const chaveEvento = `${dataStr}_${hora}_${vendedor.id}`;
-                          const evento = eventosOrganizados[chaveEvento];
+                      {/* Slots por dia */}
+                      {diasPeriodo.map((dia) => {
+                        const dataStr = format(dia, 'yyyy-MM-dd');
+                        const chaveEvento = `${dataStr}_${hora}`;
+                        const eventosSlot = eventosOrganizados[chaveEvento] || [];
+                        
+                        if (eventosSlot.length > 0) {
+                          // Slot ocupado - mostrar eventos
+                          const primeiroEvento = eventosSlot[0];
+                          const statusLocal = identificarStatusPorLocal(primeiroEvento.local_nome);
+                          const cor = getCorPorStatus(statusLocal);
                           
-                          console.log('Debug Grade - Procurando:', { 
-                            chave: chaveEvento, 
-                            encontrou: !!evento, 
-                            vendedor: vendedor.nome,
-                            hora,
-                            data: dataStr
-                          });
-                          
-                          if (evento) {
-                            // Slot ocupado - mostrar evento
-                            const statusLocal = identificarStatusPorLocal(evento.local_nome);
-                            const cor = getCorPorStatus(statusLocal);
-                            
-                            return (
-                              <div
-                                key={vendedor.id}
-                                className="m-1 p-1 rounded cursor-pointer hover:opacity-90 text-white text-xs relative transition-all"
-                                style={{ 
-                                  backgroundColor: cor,
-                                  opacity: evento.tipo_evento === 'fila_espera' ? 0.8 : 1,
-                                  border: evento.tipo_evento === 'reserva_temporaria' ? '2px dashed rgba(255,255,255,0.9)' : 'none',
-                                  minHeight: '45px'
-                                }}
-                                title={`${evento.cliente_nome} - ${evento.status} - ${STATUS_LOCAIS.find(s => s.valor === statusLocal)?.nome || 'Local'}`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEventoClick(evento);
-                                }}
-                              >
-                                <div className="font-semibold truncate mb-1">
-                                  {evento.cliente_nome}
+                          return (
+                            <div key={dataStr} className="m-1 p-2 relative" style={{ minHeight: '60px' }}>
+                              {eventosSlot.slice(0, 2).map((evento, index) => (
+                                <div
+                                  key={evento.id}
+                                  className={`mb-1 p-1 rounded cursor-pointer hover:opacity-90 text-white text-xs transition-all ${
+                                    index > 0 ? 'ml-2' : ''
+                                  }`}
+                                  style={{ 
+                                    backgroundColor: getCorPorStatus(identificarStatusPorLocal(evento.local_nome)),
+                                    opacity: evento.tipo_evento === 'fila_espera' ? 0.8 : 1,
+                                    border: evento.tipo_evento === 'reserva_temporaria' ? '2px dashed rgba(255,255,255,0.9)' : 'none',
+                                    minHeight: '28px'
+                                  }}
+                                  title={`${evento.cliente_nome} - ${evento.vendedor_nome} - ${evento.status}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEventoClick(evento);
+                                  }}
+                                >
+                                  <div className="font-semibold truncate text-xs">
+                                    {evento.cliente_nome}
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs opacity-90 truncate">
+                                      {evento.vendedor_nome?.split(' ')[0]}
+                                    </span>
+                                    <span className="text-xs">
+                                      {evento.tipo_evento === 'reuniao' ? '📅' :
+                                       evento.tipo_evento === 'reserva_temporaria' ? '⏰' : '⏳'}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center justify-between">
-                                  <span className="text-xs opacity-90">
-                                    {evento.tipo_evento === 'reuniao' ? '📅' :
-                                     evento.tipo_evento === 'reserva_temporaria' ? '⏰' : '⏳'}
-                                  </span>
-                                  {(!evento.confirmada_cliente || !evento.confirmada_vendedor) && (
-                                    <div className="w-2 h-2 bg-red-300 rounded-full animate-pulse" title="Não confirmado" />
-                                  )}
+                              ))}
+                              {eventosSlot.length > 2 && (
+                                <div className="text-xs text-muted-foreground text-center mt-1">
+                                  +{eventosSlot.length - 2} mais
                                 </div>
+                              )}
+                            </div>
+                          );
+                        } else {
+                          // Slot vazio - clicável para agendar
+                          return (
+                            <div
+                              key={dataStr}
+                              className="m-1 p-2 border-2 border-dashed border-muted-foreground/30 rounded cursor-pointer hover:border-primary hover:bg-primary/5 text-center transition-all group"
+                              onClick={() => handleSlotClick(dataStr, hora, '', '')}
+                              title={`Agendar para ${format(dia, 'dd/MM', { locale: ptBR })} às ${hora}`}
+                              style={{ minHeight: '60px' }}
+                            >
+                              <div className="flex flex-col items-center justify-center h-full">
+                                <Plus className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary mb-1" />
+                                <span className="text-xs text-muted-foreground/70 group-hover:text-primary">Agendar</span>
                               </div>
-                            );
-                          } else {
-                            // Slot vazio - clicável para agendar
-                            return (
-                              <div
-                                key={vendedor.id}
-                                className="m-1 p-1 border-2 border-dashed border-muted-foreground/30 rounded cursor-pointer hover:border-primary hover:bg-primary/5 text-center transition-all group"
-                                onClick={() => handleSlotClick(dataStr, hora, vendedor.id, vendedor.nome)}
-                                title={`Agendar ${vendedor.nome} às ${hora}`}
-                                style={{ minHeight: '45px' }}
-                              >
-                                <div className="flex flex-col items-center justify-center h-full">
-                                  <Plus className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary mb-1" />
-                                  <span className="text-xs text-muted-foreground/70 group-hover:text-primary">Agendar</span>
-                                </div>
-                              </div>
-                            );
-                          }
-                        })
-                      )}
+                            </div>
+                          );
+                        }
+                      })}
                     </div>
                   ))}
                 </div>
