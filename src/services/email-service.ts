@@ -1,6 +1,7 @@
 import { resend, EMAIL_CONFIG, EmailTemplate, EmailStatus, EmailQueueItem } from '@/lib/resend';
 import { ConfirmacaoInteresseTemplate, getConfirmacaoInteresseText } from '@/lib/email-templates/confirmacao-interesse';
 import { PropostaGeradaTemplate, getPropostaGeradaText } from '@/lib/email-templates/proposta-gerada';
+import { PropostaPagamentoIndaiaTemplate, getPropostaPagamentoIndaiaText } from '@/lib/email-templates/proposta-pagamento-indaia';
 import { ReservaExpirandoTemplate, getReservaExpirandoText } from '@/lib/email-templates/reserva-expirando';
 import { PosicaoFilaAtualizadaTemplate, getPosicaoFilaAtualizadaText } from '@/lib/email-templates/posicao-fila-atualizada';
 import { DataDisponivelTemplate, getDataDisponivelText } from '@/lib/email-templates/data-disponivel';
@@ -30,6 +31,25 @@ interface PropostaGeradaData {
   valorProposta?: string;
   tempoResposta?: string;
   tempoExpiracao?: string;
+}
+
+interface PropostaPagamentoIndaiaData {
+  nome: string;
+  email: string;
+  numeroReserva: string;
+  linkProposta: string;
+  data: string;
+  hora: string;
+  espaco?: string;
+  valorProposta: string;
+  valorTotalComJuros: string;
+  valorEntrada: string;
+  quantidadeParcelas: number;
+  valorParcelas: string;
+  valorSaldoFinal: string;
+  tempoResposta?: string;
+  tempoExpiracao?: string;
+  observacoes?: string;
 }
 
 interface ReservaExpirandoData {
@@ -272,6 +292,24 @@ export class EmailService {
         tempoExpiracao: data.tempoExpiracao || '48 horas'
       }),
       text: getPropostaGeradaText({
+        ...data,
+        tempoExpiracao: data.tempoExpiracao || '48 horas'
+      }),
+    };
+
+    return emailQueue.addToQueue(template);
+  }
+
+  // 2.1. Proposta Pagamento Indaiá
+  static async enviarPropostaPagamentoIndaia(data: PropostaPagamentoIndaiaData): Promise<string> {
+    const template: EmailTemplate = {
+      to: data.email,
+      subject: `🎯 Proposta Pagamento Indaiá - Reserva ${data.numeroReserva}`,
+      html: PropostaPagamentoIndaiaTemplate({
+        ...data,
+        tempoExpiracao: data.tempoExpiracao || '48 horas'
+      }),
+      text: getPropostaPagamentoIndaiaText({
         ...data,
         tempoExpiracao: data.tempoExpiracao || '48 horas'
       }),
@@ -567,6 +605,7 @@ export class EmailService {
 export type {
   ConfirmacaoInteresseData,
   PropostaGeradaData,
+  PropostaPagamentoIndaiaData,
   ReservaExpirandoData,
   PosicaoFilaData,
   DataDisponivelData,

@@ -22,7 +22,7 @@ export function criarVariaveisContrato(
     CLIENTE_BAIRRO: clienteData?.bairro || '',
     CLIENTE_CIDADE: clienteData?.cidade || '',
     CLIENTE_CEP: clienteData?.cep || '',
-    
+
     // Dados do evento
     TIPO_EVENTO: formData.tipo_evento || '',
     DATA_EVENTO: formatarData(formData.data_evento),
@@ -30,13 +30,25 @@ export function criarVariaveisContrato(
     NUM_CONVIDADOS: formData.numero_convidados?.toString() || '',
     ESPACO: formData.local_evento || '',
     SERVICOS: formData.servicos || '',
-    
+
     // Dados do contrato
     NUM_CONTRATO: formData.numero_contrato || '',
     DATA_CONTRATACAO: formatarData(formData.data_contratacao),
     VENDEDOR: '', // Será preenchido com o usuário que gerou o contrato
     COD_REUNIAO: formData.cod_reuniao || '',
-    
+
+    // Condições de pagamento específicas (padrões para contrato manual)
+    MODELO_PAGAMENTO: 'À vista',
+    CONDICOES_PAGAMENTO: 'Pagamento à vista conforme acordado',
+    VALOR_TOTAL: '',
+    VALOR_ENTRADA: '',
+    QTD_PARCELAS: '1',
+    JUROS_PERCENTUAL: '0%',
+    DIA_VENCIMENTO: '',
+    FORMA_PAGAMENTO: '',
+    CLAUSULAS_ADICIONAIS: '',
+    OBSERVACAO_FINANCEIRO: '',
+
     // Dados da empresa contratada
     CONTRATADA_NOME: 'INDEX02 EVENTOS LTDA.',
     CONTRATADA_CNPJ: '30.969.797/0001-09',

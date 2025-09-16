@@ -52,7 +52,7 @@ export interface ContratoVariables {
   CLIENTE_BAIRRO: string;
   CLIENTE_CIDADE: string;
   CLIENTE_CEP: string;
-  
+
   // Dados do evento
   TIPO_EVENTO: string;
   DATA_EVENTO: string;
@@ -60,13 +60,25 @@ export interface ContratoVariables {
   NUM_CONVIDADOS: string;
   ESPACO: string;
   SERVICOS: string;
-  
+
   // Dados do contrato
   NUM_CONTRATO: string;
   DATA_CONTRATACAO: string;
   VENDEDOR: string;
   COD_REUNIAO: string;
-  
+
+  // Condições de pagamento específicas
+  MODELO_PAGAMENTO: string;
+  CONDICOES_PAGAMENTO: string;
+  VALOR_TOTAL: string;
+  VALOR_ENTRADA: string;
+  QTD_PARCELAS: string;
+  JUROS_PERCENTUAL: string;
+  DIA_VENCIMENTO: string;
+  FORMA_PAGAMENTO: string;
+  CLAUSULAS_ADICIONAIS: string;
+  OBSERVACAO_FINANCEIRO: string;
+
   // Dados da empresa contratada
   CONTRATADA_NOME: string;
   CONTRATADA_CNPJ: string;

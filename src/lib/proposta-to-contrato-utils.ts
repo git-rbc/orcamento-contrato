@@ -1,4 +1,5 @@
 import { ContratoVariables } from '@/types/contrato';
+import { calcularPagamentoIndaia, formatarResumoFinanceiro } from '@/lib/payment-calculations';
 
 interface LinhaItem {
   id?: string;
@@ -37,6 +38,17 @@ interface PropostaData {
   espaco?: {
     nome: string;
   };
+  // Condições de pagamento
+  modelo_pagamento?: string;
+  reajuste?: string;
+  juros?: number;
+  qtd_meses?: number;
+  dia_vencimento?: number;
+  forma_saldo_final?: string;
+  entrada?: string;
+  negociacao?: string;
+  clausulas_adicionais?: string;
+  observacao_financeiro?: string;
 }
 
 interface ClienteData {
@@ -337,6 +349,63 @@ export function criarVariaveisContratoFromProposta(
     return d.toLocaleDateString('pt-BR');
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
+
+  // Gerar condições de pagamento detalhadas
+  const gerarCondicoesPagamento = (): string => {
+    const modelo = proposta.modelo_pagamento || 'À vista';
+
+    if (modelo === 'Pagamento Indaiá' && proposta.data_realizacao) {
+      try {
+        const calculo = calcularPagamentoIndaia({
+          valorTotal: proposta.total_proposta,
+          dataEvento: new Date(proposta.data_realizacao)
+        });
+
+        return `PAGAMENTO INDAIÁ:
+• Valor original: ${formatCurrency(proposta.total_proposta)}
+• Valor total com juros (1,29% a.m.): ${formatCurrency(calculo.valorTotalComJuros)}
+• Entrada obrigatória (20%): ${formatCurrency(calculo.valorEntrada)}
+• ${calculo.quantidadeParcelas}x parcelas de ${formatCurrency(calculo.valorParcelas)}
+• Saldo final (30%): ${formatCurrency(calculo.valorSaldoFinal)} - A ser pago 30 dias antes do evento
+• Taxa de juros: 1,29% ao mês (${calculo.percentualJuros}% total)`;
+      } catch (error) {
+        console.error('Erro ao calcular Pagamento Indaiá:', error);
+      }
+    }
+
+    let condicoes = `MODELO: ${modelo}`;
+
+    if (proposta.entrada === 'Sim' && proposta.valor_entrada) {
+      condicoes += `\n• Entrada: ${formatCurrency(proposta.valor_entrada)}`;
+    }
+
+    if (proposta.qtd_meses && proposta.qtd_meses > 1) {
+      const valorRestante = proposta.total_proposta - (proposta.valor_entrada || 0);
+      const valorParcela = valorRestante / proposta.qtd_meses;
+      condicoes += `\n• ${proposta.qtd_meses}x parcelas de ${formatCurrency(valorParcela)}`;
+
+      if (proposta.dia_vencimento) {
+        condicoes += `\n• Vencimento: dia ${proposta.dia_vencimento} de cada mês`;
+      }
+    }
+
+    if (proposta.juros && proposta.juros > 0) {
+      condicoes += `\n• Juros: ${proposta.juros}% ao mês`;
+    }
+
+    if (proposta.forma_saldo_final) {
+      condicoes += `\n• Forma de pagamento do saldo: ${proposta.forma_saldo_final}`;
+    }
+
+    return condicoes;
+  };
+
   return {
     // Dados do cliente
     CLIENTE_NOME: cliente.nome || '',
@@ -348,7 +417,7 @@ export function criarVariaveisContratoFromProposta(
     CLIENTE_BAIRRO: cliente.bairro || '',
     CLIENTE_CIDADE: cliente.cidade || '',
     CLIENTE_CEP: cliente.cep || '',
-    
+
     // Dados do evento
     TIPO_EVENTO: proposta.tipo_evento || 'Evento',
     DATA_EVENTO: formatarData(proposta.data_realizacao),
@@ -356,13 +425,25 @@ export function criarVariaveisContratoFromProposta(
     NUM_CONVIDADOS: proposta.num_pessoas?.toString() || '',
     ESPACO: proposta.espaco?.nome || proposta.local_evento || '',
     SERVICOS: gerarTextoServicos(proposta),
-    
+
     // Dados do contrato
     NUM_CONTRATO: numeroContrato,
     DATA_CONTRATACAO: formatarData(new Date()),
     VENDEDOR: vendedor,
     COD_REUNIAO: '', // Pode ser extraído da proposta se disponível
-    
+
+    // Condições de pagamento específicas
+    MODELO_PAGAMENTO: proposta.modelo_pagamento || 'À vista',
+    CONDICOES_PAGAMENTO: gerarCondicoesPagamento(),
+    VALOR_TOTAL: formatCurrency(proposta.total_proposta),
+    VALOR_ENTRADA: proposta.valor_entrada ? formatCurrency(proposta.valor_entrada) : '',
+    QTD_PARCELAS: proposta.qtd_meses?.toString() || '1',
+    JUROS_PERCENTUAL: proposta.juros ? `${proposta.juros}%` : '0%',
+    DIA_VENCIMENTO: proposta.dia_vencimento?.toString() || '',
+    FORMA_PAGAMENTO: proposta.forma_saldo_final || '',
+    CLAUSULAS_ADICIONAIS: proposta.clausulas_adicionais || '',
+    OBSERVACAO_FINANCEIRO: proposta.observacao_financeiro || '',
+
     // Dados da empresa contratada
     CONTRATADA_NOME: 'INDEX02 EVENTOS LTDA.',
     CONTRATADA_CNPJ: '30.969.797/0001-09',

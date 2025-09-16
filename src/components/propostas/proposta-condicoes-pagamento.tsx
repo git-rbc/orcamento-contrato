@@ -1,7 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import {
+  calcularPagamentoIndaia,
+  formatarResumoFinanceiro,
+  validarPagamentoIndaia,
+  getValorMinimoEntrada,
+  calcularPagamentoSemJuros1mais4,
+  formatarResumoFinanceiroSemJuros1mais4,
+  validarPagamentoSemJuros1mais4,
+  calcularPagamentoAVistaDinheiro,
+  formatarResumoFinanceiroAVistaDinheiro,
+  validarPagamentoAVistaDinheiro,
+  calcularPagamentoAVistaParcialCartao,
+  formatarResumoFinanceiroAVistaParcialCartao,
+  validarPagamentoAVistaParcialCartao,
+  calcularCondicaoEspecialConsultor,
+  formatarResumoFinanceiroCondicaoEspecialConsultor,
+  validarCondicaoEspecialConsultor,
+  calcularPagamento5050,
+  formatarResumoFinanceiro5050,
+  validarPagamento5050,
+  type PagamentoSemJuros1mais4Calculation,
+  type PagamentoAVistaDinheiroCalculation,
+  type PagamentoAVistaParcialCartaoCalculation,
+  type CondicaoEspecialConsultorCalculation,
+  type Pagamento5050Calculation
+} from '@/lib/payment-calculations';
+import { AlertCircle, Calculator, Lock, Calendar, Settings } from 'lucide-react';
 
 export interface CondicoesPagamentoState {
   modeloPagamento: string;
@@ -18,16 +46,23 @@ export interface CondicoesPagamentoState {
   observacao: string;
   entrada: 'Sim' | 'Não';
   negociacao: string;
+  // Campos específicos para Pagamento Indaiá
+  valorTotalComJuros?: number;
+  valorSaldoFinal?: number;
+  calculoAutomatico?: boolean;
+  modoManual?: boolean; // Toggle para permitir edição manual
 }
 
-interface Props { 
+interface Props {
   totalProposta: number;
   onValorEntradaChange: (value: number) => void;
   onCondicoesPagamentoChange?: (condicoes: CondicoesPagamentoState) => void;
+  onIsCalculatingChange?: (isCalculating: boolean) => void;
   initialValues?: Partial<CondicoesPagamentoState>;
+  dataEvento?: Date; // Data do evento para cálculos do Pagamento Indaiá
 }
 
-export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange, onCondicoesPagamentoChange, initialValues }: Props) {
+export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange, onCondicoesPagamentoChange, onIsCalculatingChange, initialValues, dataEvento }: Props) {
   const modeloOptions = [
     'Pagamento Indaiá',
     'Sem Juros (1+4)',
@@ -52,17 +87,578 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
     observacao: initialValues?.observacao || '',
     entrada: initialValues?.entrada || 'Não',
     negociacao: initialValues?.negociacao || '',
+    valorTotalComJuros: initialValues?.valorTotalComJuros || 0,
+    valorSaldoFinal: initialValues?.valorSaldoFinal || 0,
+    calculoAutomatico: initialValues?.calculoAutomatico || false,
+    modoManual: initialValues?.modoManual || false,
   });
+
+  const [indaiaCalculation, setIndaiaCalculation] = useState<any>(null);
+  const [semJuros1mais4Calculation, setSemJuros1mais4Calculation] = useState<PagamentoSemJuros1mais4Calculation | null>(null);
+  const [aVistaDinheiroCalculation, setAVistaDinheiroCalculation] = useState<PagamentoAVistaDinheiroCalculation | null>(null);
+  const [aVistaParcialCartaoCalculation, setAVistaParcialCartaoCalculation] = useState<PagamentoAVistaParcialCartaoCalculation | null>(null);
+  const [condicaoEspecialConsultorCalculation, setCondicaoEspecialConsultorCalculation] = useState<CondicaoEspecialConsultorCalculation | null>(null);
+  const [pagamento5050Calculation, setPagamento5050Calculation] = useState<Pagamento5050Calculation | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isTypingEntrada, setIsTypingEntrada] = useState(false);
+  const [entradaBuffer, setEntradaBuffer] = useState<string>('');
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [valorMinimoOriginal, setValorMinimoOriginal] = useState<number>(0);
+  const lastCalculationRef = useRef<string>('');
+  const calculationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const formaPgtoOptions = ['PIX','Cartão de Crédito (Máquina)','Cartão de Crédito (Vindi)','Boleto (Vindi)','Dinheiro','TED'];
   const statusPgtoOptions = ['Realizado durante a reunião','Será realizado com o Pós Vendas'];
   const formaSaldoFinalOptions = ['Visa','Mastercard','Elo','American Express','A ser pago até 30 dias antes do evento'];
   const negociacaoOptions = ['Imediato','Pós Reunião','Ação Gerente','Corporativo'];
 
-  const valorRestante = Math.max(totalProposta - state.valorEntrada, 0);
-  const valorParcela = state.qtdMeses > 0 ? valorRestante / state.qtdMeses : 0;
+  const isPagamentoIndaia = state.modeloPagamento === 'Pagamento Indaiá';
+  const isSemJuros1mais4 = state.modeloPagamento === 'Sem Juros (1+4)';
+  const isAVistaDinheiro = state.modeloPagamento === 'À vista (Dinheiro)';
+  const isAVistaParcialCartao = state.modeloPagamento === 'À vista Parcial (Cartão de Crédito)';
+  const isCondicaoEspecialConsultor = state.modeloPagamento === 'Condição Especial do Consultor';
+  const is5050 = state.modeloPagamento === '50/50';
+
+  // Funções específicas para controle de bloqueio de campos
+  const isFieldAlwaysLocked = (field: string) => {
+    // Campos sempre bloqueados no Pagamento Indaiá
+    if (isPagamentoIndaia && ['juros', 'reajuste', 'formaSaldoFinal'].includes(field)) {
+      return true;
+    }
+    // Campos sempre bloqueados no Sem Juros (1+4)
+    if (isSemJuros1mais4 && ['juros', 'reajuste', 'formaSaldoFinal', 'valorSaldoFinal', 'qtdMeses', 'valorEntrada'].includes(field)) {
+      return true;
+    }
+    // Campos sempre bloqueados no À vista (Dinheiro)
+    if (isAVistaDinheiro && ['juros', 'reajuste', 'qtdMeses', 'valorEntrada', 'valorSaldoFinal'].includes(field)) {
+      return true;
+    }
+    // Campos sempre bloqueados no À vista Parcial (Cartão de Crédito)
+    if (isAVistaParcialCartao && ['valorEntrada', 'valorSaldoFinal', 'formaSaldoFinal'].includes(field)) {
+      return true;
+    }
+    // Condição Especial do Consultor - campos flexíveis, apenas reajuste é sempre sim
+    if (isCondicaoEspecialConsultor && ['reajuste'].includes(field)) {
+      return true;
+    }
+    // 50/50 - entrada e saldo final fixos, apenas reajuste é sempre sim
+    if (is5050 && ['valorEntrada', 'valorSaldoFinal', 'reajuste', 'qtdMeses'].includes(field)) {
+      return true;
+    }
+    return false;
+  };
+
+  const isFieldNeverEditable = (field: string) => {
+    // Campos nunca editáveis no Pagamento Indaiá (nem no modo manual)
+    if (isPagamentoIndaia && ['valorSaldoFinal'].includes(field)) {
+      return true;
+    }
+    return false;
+  };
+
+  const isFieldManualEditable = (field: string) => {
+    // Campos editáveis apenas no modo manual do Pagamento Indaiá
+    if (isPagamentoIndaia && ['valorEntrada', 'qtdMeses'].includes(field)) {
+      return state.modoManual;
+    }
+    return true; // Para outros modelos, permite edição normal
+  };
+
+  const isFieldLocked = (field: string) => {
+    if (isFieldAlwaysLocked(field) || isFieldNeverEditable(field)) {
+      return true;
+    }
+
+    if (isPagamentoIndaia) {
+      return !isFieldManualEditable(field);
+    }
+
+    return false; // Para outros modelos de pagamento
+  };
+
+  // Função para calcular data do saldo final (30 dias antes do evento)
+  const getDataSaldoFinal = () => {
+    if (!dataEvento) return null;
+    const dataSaldo = new Date(dataEvento);
+    dataSaldo.setDate(dataSaldo.getDate() - 30);
+    return dataSaldo;
+  };
+
+  // Função para recalcular quando valores são alterados manualmente
+  const recalcularPagamentoManual = (novoState: CondicoesPagamentoState, tipoAlteracao: 'entrada' | 'parcelas' | 'saldo') => {
+    if (!isPagamentoIndaia || !dataEvento || !novoState.modoManual || !indaiaCalculation) return novoState;
+
+    try {
+      const valorTotalComJuros = novoState.valorTotalComJuros || indaiaCalculation.valorTotalComJuros;
+
+      // Recalcular baseado no tipo de alteração
+      if (tipoAlteracao === 'parcelas') {
+        // Quando muda parcelas, recalcular saldo final (30% do valor remanescente)
+        const valorEntrada = novoState.valorEntrada;
+        const valorRemanescente = valorTotalComJuros - valorEntrada;
+        const novoValorSaldoFinal = Math.round(valorRemanescente * 0.30 * 100) / 100;
+
+
+        return {
+          ...novoState,
+          valorSaldoFinal: novoValorSaldoFinal,
+          // O valor da parcela será calculado dinamicamente na UI
+        };
+      } else if (tipoAlteracao === 'entrada') {
+        // Quando muda entrada, ajustar proporcionalmente parcelas e saldo
+        const novaEntrada = novoState.valorEntrada;
+        const valorRestante = valorTotalComJuros - novaEntrada;
+
+        // Manter proporção 70% parcelas / 30% saldo final do valor restante
+        const valorSaldoFinal = Math.round(valorRestante * 0.3 * 100) / 100;
+
+        return {
+          ...novoState,
+          valorSaldoFinal,
+        };
+      } else if (tipoAlteracao === 'saldo') {
+        // Quando muda saldo final, o valor das parcelas se ajusta automaticamente
+        // Não precisa fazer nada, a UI já calculará dinamicamente
+        return novoState;
+      }
+
+      return novoState;
+    } catch (error) {
+      console.error('Erro no recálculo manual:', error);
+      return novoState;
+    }
+  };
+
+  // useEffect para debounce da entrada
+  useEffect(() => {
+    if (isTypingEntrada && entradaBuffer !== '') {
+      const timer = setTimeout(() => {
+        const num = Number(entradaBuffer);
+        if (isPagamentoIndaia && dataEvento && num > 0 && valorMinimoOriginal > 0) {
+          if (num < valorMinimoOriginal) {
+            console.warn(`Valor de entrada abaixo do mínimo permitido: ${valorMinimoOriginal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`);
+          }
+        }
+        setIsTypingEntrada(false);
+      }, 500); // 500ms de debounce
+
+      return () => clearTimeout(timer);
+    }
+  }, [entradaBuffer, isTypingEntrada, isPagamentoIndaia, dataEvento, totalProposta]);
+
+  // Recalcular valores quando Pagamento Indaiá for selecionado
+  useEffect(() => {
+    if (isPagamentoIndaia && dataEvento && totalProposta > 0) {
+      // Criar uma chave única para evitar recálculos desnecessários
+      const calculationKey = `${totalProposta}-${dataEvento.getTime()}-${state.modoManual}`;
+
+      if (lastCalculationRef.current === calculationKey) {
+        return; // Evitar recálculo se os parâmetros são os mesmos
+      }
+
+      // Cancelar timer anterior se existir
+      if (calculationTimerRef.current) {
+        clearTimeout(calculationTimerRef.current);
+      }
+
+      // Marcar que está calculando
+      setIsCalculating(true);
+      onIsCalculatingChange?.(true);
+
+      // Aplicar delay de 2 segundos para o cálculo (debounce)
+      calculationTimerRef.current = setTimeout(() => {
+        try {
+          const errors = validarPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
+          setValidationErrors(errors);
+
+          if (errors.length === 0) {
+            const calculation = calcularPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
+            setIndaiaCalculation(calculation);
+            lastCalculationRef.current = calculationKey;
+
+            // Sempre atualizar o valor mínimo com o cálculo correto (20% do valor total com juros)
+            setValorMinimoOriginal(calculation.valorEntrada);
+
+          // Atualizar estado automaticamente apenas se não estiver em modo manual
+          const newState = {
+            ...state,
+            calculoAutomatico: true,
+            entrada: 'Sim' as const,
+            reajuste: 'Sim' as const,
+            juros: calculation.percentualJuros,
+            valorTotalComJuros: calculation.valorTotalComJuros,
+            formaSaldoFinal: 'A ser pago até 30 dias antes do evento',
+            // Só atualizar valores calculados se não estiver em modo manual
+            ...(state.modoManual ? {} : {
+              valorEntrada: calculation.valorEntrada,
+              qtdMeses: calculation.quantidadeParcelas,
+              valorSaldoFinal: calculation.valorSaldoFinal,
+            })
+          };
+
+          setState(newState);
+          // Só atualizar callback de entrada se não estiver em modo manual
+          if (!state.modoManual) {
+            onValorEntradaChange(calculation.valorEntrada);
+          } else {
+            onValorEntradaChange(state.valorEntrada);
+          }
+          onCondicoesPagamentoChange?.(newState);
+        }
+      } catch (error) {
+        console.error('Erro ao calcular Pagamento Indaiá:', error);
+        setValidationErrors(['Erro no cálculo do Pagamento Indaiá']);
+      } finally {
+        setIsCalculating(false);
+        onIsCalculatingChange?.(false);
+      }
+      }, 500); // Delay de 500ms
+
+      return () => {
+        if (calculationTimerRef.current) {
+          clearTimeout(calculationTimerRef.current);
+          calculationTimerRef.current = null;
+        }
+        setIsCalculating(false);
+        onIsCalculatingChange?.(false);
+      };
+    } else if (!isPagamentoIndaia) {
+      // Reset quando sair do Pagamento Indaiá
+      setIndaiaCalculation(null);
+      setValidationErrors([]);
+      setValorMinimoOriginal(0);
+      if (state.calculoAutomatico) {
+        const newState = {
+          ...state,
+          calculoAutomatico: false,
+          modoManual: false,
+          juros: 0,
+          reajuste: 'Não' as const
+        };
+        setState(newState);
+        onCondicoesPagamentoChange?.(newState);
+      }
+    }
+  }, [isPagamentoIndaia, totalProposta, dataEvento]);
+
+  // Recalcular valores quando Sem Juros (1+4) for selecionado
+  useEffect(() => {
+    if (isSemJuros1mais4 && totalProposta > 0) {
+      try {
+        const errors = validarPagamentoSemJuros1mais4(totalProposta);
+        setValidationErrors(errors);
+
+        if (errors.length === 0) {
+          const calculation = calcularPagamentoSemJuros1mais4(totalProposta);
+          setSemJuros1mais4Calculation(calculation);
+
+          // Atualizar estado automaticamente
+          const newState = {
+            ...state,
+            calculoAutomatico: true,
+            entrada: 'Sim' as const,
+            reajuste: 'Não' as const,
+            juros: 0,
+            valorEntrada: calculation.valorEntrada,
+            qtdMeses: calculation.quantidadeParcelas,
+            valorSaldoFinal: 0,
+            formaSaldoFinal: '',
+            valorTotalComJuros: calculation.valorTotal,
+          };
+
+          setState(newState);
+          onValorEntradaChange(calculation.valorEntrada);
+          onCondicoesPagamentoChange?.(newState);
+        }
+      } catch (error) {
+        console.error('Erro ao calcular Pagamento Sem Juros (1+4):', error);
+        setValidationErrors(['Erro no cálculo do Pagamento Sem Juros (1+4)']);
+      }
+    } else if (!isSemJuros1mais4) {
+      // Reset quando sair do Sem Juros (1+4)
+      setSemJuros1mais4Calculation(null);
+      if (!isPagamentoIndaia) {
+        setValidationErrors([]);
+      }
+    }
+  }, [isSemJuros1mais4, totalProposta]);
+
+  // Recalcular valores quando À vista (Dinheiro) for selecionado
+  useEffect(() => {
+    if (isAVistaDinheiro && totalProposta > 0) {
+      try {
+        const errors = validarPagamentoAVistaDinheiro(totalProposta);
+        setValidationErrors(errors);
+
+        if (errors.length === 0) {
+          const calculation = calcularPagamentoAVistaDinheiro(totalProposta);
+          setAVistaDinheiroCalculation(calculation);
+
+          // Atualizar estado automaticamente
+          const newState = {
+            ...state,
+            calculoAutomatico: true,
+            entrada: 'Sim' as const,
+            reajuste: 'Não' as const,
+            juros: 0,
+            valorEntrada: calculation.valorEntrada,
+            qtdMeses: 1,
+            valorSaldoFinal: calculation.valorSaldoFinal,
+            formaSaldoFinal: 'Boleto',
+            valorTotalComJuros: calculation.valorTotalComDesconto,
+          };
+
+          setState(newState);
+          onValorEntradaChange(calculation.valorEntrada);
+          onCondicoesPagamentoChange?.(newState);
+        }
+      } catch (error) {
+        console.error('Erro ao calcular Pagamento À vista (Dinheiro):', error);
+        setValidationErrors(['Erro no cálculo do Pagamento À vista (Dinheiro)']);
+      }
+    } else if (!isAVistaDinheiro) {
+      // Reset quando sair do À vista (Dinheiro)
+      setAVistaDinheiroCalculation(null);
+      if (!isPagamentoIndaia && !isSemJuros1mais4) {
+        setValidationErrors([]);
+      }
+    }
+  }, [isAVistaDinheiro, totalProposta]);
+
+  // Recalcular valores quando À vista Parcial (Cartão de Crédito) for selecionado
+  useEffect(() => {
+    if (isAVistaParcialCartao && totalProposta > 0) {
+      try {
+        // Usar valores padrão se não especificados
+        const quantidadeParcelas = state.qtdMeses || 1;
+        const taxaJuros = state.juros > 0 ? state.juros / 100 : 0.0129; // Usar 1,29% padrão se juros não definido
+
+        const errors = validarPagamentoAVistaParcialCartao({
+          valorTotal: totalProposta,
+          quantidadeParcelas,
+          taxaJuros
+        });
+        setValidationErrors(errors);
+
+        if (errors.length === 0) {
+          const calculation = calcularPagamentoAVistaParcialCartao({
+            valorTotal: totalProposta,
+            quantidadeParcelas,
+            taxaJuros
+          });
+          setAVistaParcialCartaoCalculation(calculation);
+
+          // Calcular data sugerida para pagamento (30 dias a partir de hoje)
+          const dataPagamento = new Date();
+          dataPagamento.setDate(dataPagamento.getDate() + 30);
+
+          // Atualizar estado automaticamente
+          const newState = {
+            ...state,
+            calculoAutomatico: true,
+            entrada: 'Sim' as const,
+            reajuste: 'Sim' as const,
+            juros: calculation.percentualJuros,
+            valorEntrada: calculation.valorEntrada,
+            qtdMeses: calculation.quantidadeParcelasCartao,
+            valorSaldoFinal: 0,
+            formaSaldoFinal: 'Cartão de Crédito (Vindi)',
+            valorTotalComJuros: calculation.valorTotalComJuros,
+            diaVencimento: dataPagamento.getDate(),
+          };
+
+          setState(newState);
+          onValorEntradaChange(calculation.valorEntrada);
+          onCondicoesPagamentoChange?.(newState);
+        }
+      } catch (error) {
+        console.error('Erro ao calcular Pagamento À vista Parcial (Cartão de Crédito):', error);
+        setValidationErrors(['Erro no cálculo do Pagamento À vista Parcial (Cartão de Crédito)']);
+      }
+    } else if (!isAVistaParcialCartao) {
+      // Reset quando sair do À vista Parcial (Cartão de Crédito)
+      setAVistaParcialCartaoCalculation(null);
+      if (!isPagamentoIndaia && !isSemJuros1mais4 && !isAVistaDinheiro) {
+        setValidationErrors([]);
+      }
+    }
+  }, [isAVistaParcialCartao, totalProposta, state.qtdMeses, state.juros]);
+
+  // Recalcular valores quando Condição Especial do Consultor for selecionado
+  useEffect(() => {
+    if (isCondicaoEspecialConsultor && totalProposta > 0) {
+      try {
+        // Usar valores padrão se não especificados
+        const valorEntrada = state.valorEntrada || 1000; // Mínimo R$ 1.000
+        const parcelasEntrada = 1; // Padrão 1x (pode ser editado até 12x)
+        const parcelasIntermediarias = state.qtdMeses || 1;
+        const valorParcelaIntermediaria = 600; // Mínimo R$ 600
+        const parcelasSaldoFinal = 1; // Padrão 1x (pode ser editado até 18x)
+        const percentualJuros = state.juros > 0 ? state.juros / 100 : 0.0129; // 1,29% padrão
+
+        const errors = validarCondicaoEspecialConsultor({
+          valorTotal: totalProposta,
+          valorEntrada,
+          parcelasEntrada,
+          parcelasIntermediarias,
+          parcelasSaldoFinal,
+          taxaJuros: percentualJuros,
+          dataEvento
+        });
+        setValidationErrors(errors);
+
+        if (errors.length === 0) {
+          const calculation = calcularCondicaoEspecialConsultor({
+            valorTotal: totalProposta,
+            valorEntrada,
+            parcelasEntrada,
+            parcelasIntermediarias,
+            parcelasSaldoFinal,
+            taxaJuros: percentualJuros,
+            dataEvento
+          });
+          setCondicaoEspecialConsultorCalculation(calculation);
+
+          // Atualizar estado automaticamente
+          const newState = {
+            ...state,
+            calculoAutomatico: true,
+            entrada: 'Sim' as const,
+            reajuste: 'Sim' as const,
+            juros: calculation.percentualJuros,
+            valorEntrada: calculation.valorEntrada,
+            qtdMeses: calculation.parcelasIntermediarias,
+            valorSaldoFinal: calculation.valorSaldoFinal,
+            valorTotalComJuros: calculation.valorTotalComJuros,
+          };
+
+          setState(newState);
+          onValorEntradaChange(calculation.valorEntrada);
+          onCondicoesPagamentoChange?.(newState);
+        }
+      } catch (error) {
+        console.error('Erro ao calcular Condição Especial do Consultor:', error);
+        setValidationErrors(['Erro no cálculo da Condição Especial do Consultor']);
+      }
+    } else if (!isCondicaoEspecialConsultor) {
+      // Reset quando sair da Condição Especial do Consultor
+      setCondicaoEspecialConsultorCalculation(null);
+      if (!isPagamentoIndaia && !isSemJuros1mais4 && !isAVistaDinheiro && !isAVistaParcialCartao) {
+        setValidationErrors([]);
+      }
+    }
+  }, [isCondicaoEspecialConsultor, totalProposta, state.valorEntrada, state.qtdMeses, state.juros]);
+
+  // Recalcular valores quando 50/50 for selecionado
+  useEffect(() => {
+    if (is5050 && totalProposta > 0 && dataEvento) {
+      try {
+        // Usar data de hoje como data do contrato
+        const dataContrato = new Date();
+        const taxaJuros = state.juros > 0 ? state.juros / 100 : 0.0129; // 1,29% padrão
+
+        const errors = validarPagamento5050({
+          valorTotal: totalProposta,
+          dataContrato,
+          dataEvento,
+          taxaJuros
+        });
+        setValidationErrors(errors);
+
+        if (errors.length === 0) {
+          const calculation = calcularPagamento5050({
+            valorTotal: totalProposta,
+            dataContrato,
+            dataEvento,
+            taxaJuros
+          });
+          setPagamento5050Calculation(calculation);
+
+          // Atualizar estado automaticamente
+          const newState = {
+            ...state,
+            calculoAutomatico: true,
+            entrada: 'Sim' as const,
+            reajuste: 'Sim' as const,
+            juros: calculation.percentualJuros,
+            valorEntrada: calculation.valorEntrada,
+            qtdMeses: 1, // Apenas um boleto intermediário
+            valorSaldoFinal: calculation.valorSaldoFinal,
+            valorTotalComJuros: calculation.valorTotalComJuros,
+            formaSaldoFinal: 'Boleto (Vindi)',
+          };
+
+          setState(newState);
+          onValorEntradaChange(calculation.valorEntrada);
+          onCondicoesPagamentoChange?.(newState);
+        }
+      } catch (error) {
+        console.error('Erro ao calcular Pagamento 50/50:', error);
+        setValidationErrors(['Erro no cálculo do Pagamento 50/50']);
+      }
+    } else if (!is5050) {
+      // Reset quando sair do 50/50
+      setPagamento5050Calculation(null);
+      if (!isPagamentoIndaia && !isSemJuros1mais4 && !isAVistaDinheiro && !isAVistaParcialCartao && !isCondicaoEspecialConsultor) {
+        setValidationErrors([]);
+      }
+    }
+  }, [is5050, totalProposta, dataEvento, state.juros]);
+
+  const valorRestante = isPagamentoIndaia && indaiaCalculation && !isCalculating
+    ? indaiaCalculation.valorTotalComJuros - state.valorEntrada - (state.valorSaldoFinal || 0)
+    : Math.max(totalProposta - state.valorEntrada, 0);
+
+  const valorParcela = state.qtdMeses > 0 ? Math.round((valorRestante / state.qtdMeses) * 100) / 100 : 0;
 
   const resumoSimulador = () => {
+    if (isPagamentoIndaia && isCalculating) {
+      return "Calculando...";
+    }
+
+    if (isPagamentoIndaia && indaiaCalculation) {
+      if (state.modoManual) {
+        // Em modo manual, usar valores atuais do estado
+        const valorTotalComJuros = state.valorTotalComJuros || indaiaCalculation.valorTotalComJuros;
+        const valorEntrada = state.valorEntrada;
+        const qtdParcelas = state.qtdMeses;
+        const valorSaldoFinal = state.valorSaldoFinal || 0;
+
+        // Calcular valor da parcela dinamicamente
+        const valorRestanteParaParcelas = valorTotalComJuros - valorEntrada - valorSaldoFinal;
+        const valorParcela = qtdParcelas > 0 ? Math.round((valorRestanteParaParcelas / qtdParcelas) * 100) / 100 : 0;
+
+        const entrada = valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+        const parcelas = `${qtdParcelas}x de ${valorParcela.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`;
+        const saldo = valorSaldoFinal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+
+        return `Entrada: ${entrada} • ${parcelas} • Saldo: ${saldo} (30 dias antes do evento)`;
+      } else {
+        // Em modo automático, usar formatação padrão
+        return formatarResumoFinanceiro(indaiaCalculation);
+      }
+    }
+
+    if (isSemJuros1mais4 && semJuros1mais4Calculation) {
+      return formatarResumoFinanceiroSemJuros1mais4(semJuros1mais4Calculation);
+    }
+
+    if (isAVistaDinheiro && aVistaDinheiroCalculation) {
+      return formatarResumoFinanceiroAVistaDinheiro(aVistaDinheiroCalculation);
+    }
+
+    if (isAVistaParcialCartao && aVistaParcialCartaoCalculation) {
+      return formatarResumoFinanceiroAVistaParcialCartao(aVistaParcialCartaoCalculation);
+    }
+
+    if (isCondicaoEspecialConsultor && condicaoEspecialConsultorCalculation) {
+      return formatarResumoFinanceiroCondicaoEspecialConsultor(condicaoEspecialConsultorCalculation);
+    }
+
+    if (is5050 && pagamento5050Calculation) {
+      return formatarResumoFinanceiro5050(pagamento5050Calculation);
+    }
+
     const entradaTxt = state.entrada === 'Sim' && state.valorEntrada > 0
       ? `Entrada de ${state.valorEntrada.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} via ${state.formaPagamentoEntrada || '-'} (${state.statusPagamentoEntrada||'-'})`
       : 'Sem entrada';
@@ -75,8 +671,13 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
   };
 
   const handleChange = (field: keyof CondicoesPagamentoState, value: any) => {
+    // Evitar mudanças quando o campo está bloqueado
+    if (isFieldLocked(field)) {
+      return;
+    }
+
     let newState = { ...state };
-    
+
     if (field === 'reajuste') {
       if (value === 'Não') {
         newState = { ...state, reajuste: value, juros: 0 };
@@ -85,19 +686,254 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
       }
     } else if (field === 'valorEntrada') {
       const num = value === '' ? 0 : Number(value);
+
+      // Ativar flag de digitação e atualizar buffer
+      if (isPagamentoIndaia && dataEvento) {
+        setIsTypingEntrada(true);
+        setEntradaBuffer(value);
+      }
+
       newState = { ...state, valorEntrada: num };
       onValorEntradaChange(num);
+
+      // Recalcular se estiver em modo manual (sem validação imediata)
+      if (isPagamentoIndaia && state.modoManual) {
+        newState = recalcularPagamentoManual(newState, 'entrada');
+      }
+    } else if (field === 'qtdMeses') {
+      newState = { ...state, [field]: value };
+
+      // Recalcular se estiver em modo manual
+      if (isPagamentoIndaia && state.modoManual) {
+        newState = recalcularPagamentoManual(newState, 'parcelas');
+      }
+    } else if (field === 'juros') {
+      newState = { ...state, [field]: value };
+
+      // Para o modelo À vista Parcial (Cartão de Crédito), recalcular automaticamente quando os juros mudarem
+    } else if (field === 'valorSaldoFinal') {
+      const num = value === '' ? 0 : Number(value);
+      newState = { ...state, valorSaldoFinal: num };
+
+      // Recalcular se estiver em modo manual
+      if (isPagamentoIndaia && state.modoManual) {
+        newState = recalcularPagamentoManual(newState, 'saldo');
+      }
+    } else if (field === 'modoManual') {
+      // Toggle entre modo automático e manual
+      if (value && isPagamentoIndaia && indaiaCalculation) {
+        // Entrar em modo manual - manter valores atuais como base
+        newState = {
+          ...state,
+          modoManual: true,
+          // Preservar valores atuais para edição
+        };
+      } else {
+        // Voltar para modo automático - recalcular tudo
+        if (isPagamentoIndaia && dataEvento && totalProposta > 0) {
+          try {
+            const calculation = calcularPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
+            newState = {
+              ...state,
+              modoManual: false,
+              valorEntrada: calculation.valorEntrada,
+              qtdMeses: calculation.quantidadeParcelas,
+              valorTotalComJuros: calculation.valorTotalComJuros,
+              valorSaldoFinal: calculation.valorSaldoFinal,
+            };
+            onValorEntradaChange(calculation.valorEntrada);
+          } catch (error) {
+            console.error('Erro ao recalcular:', error);
+            newState = { ...state, modoManual: false };
+          }
+        } else {
+          newState = { ...state, modoManual: false };
+        }
+      }
+    } else if (field === 'modeloPagamento') {
+      // Reset de campos quando mudar o modelo
+      newState = {
+        ...state,
+        [field]: value,
+        calculoAutomatico: value === 'Pagamento Indaiá' || value === 'Sem Juros (1+4)' || value === 'À vista (Dinheiro)' || value === 'À vista Parcial (Cartão de Crédito)' || value === 'Condição Especial do Consultor' || value === '50/50',
+        modoManual: false // Reset modo manual
+      };
     } else {
       newState = { ...state, [field]: value };
     }
-    
+
     setState(newState);
     onCondicoesPagamentoChange?.(newState);
   };
 
   return (
     <div className="border rounded overflow-hidden">
-      <div className="bg-zinc-200 dark:bg-zinc-800 text-center font-semibold py-1">Financeiro</div>
+      <div className="bg-zinc-200 dark:bg-zinc-800 text-center font-semibold py-1 relative">
+        Financeiro
+        {isCalculating && (
+          <span className="absolute right-2 top-1 text-xs text-orange-600 animate-pulse">
+            Calculando...
+          </span>
+        )}
+      </div>
+
+      {/* Alertas de validação */}
+      {validationErrors.length > 0 && (
+        <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-red-500" />
+            <span className="text-sm font-medium text-red-800">Problemas encontrados:</span>
+          </div>
+          <ul className="mt-1 text-sm text-red-700 list-disc list-inside">
+            {validationErrors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Resumo do Pagamento Indaiá */}
+      {isPagamentoIndaia && indaiaCalculation && (
+        <div className="mx-4 mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium text-blue-800">
+                {state.modoManual ? 'Modo Manual - Pagamento Indaiá' : 'Pagamento Indaiá'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Settings className="h-3 w-3 text-blue-500" />
+              <span className="text-xs text-blue-600">Manual</span>
+              <Switch
+                checked={state.modoManual || false}
+                onCheckedChange={(checked) => handleChange('modoManual', checked)}
+              />
+            </div>
+          </div>
+          <div className="text-sm text-blue-700">
+            <div>Total original: {totalProposta.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Total com juros: {isCalculating ? <span className="text-orange-600 animate-pulse">Calculando...</span> : indaiaCalculation.valorTotalComJuros.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Juros aplicados: {isCalculating ? <span className="text-orange-600 animate-pulse">Calculando...</span> : `${indaiaCalculation.jurosAplicados.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} (${indaiaCalculation.percentualJuros}% ao mês)`}</div>
+            {state.modoManual && (
+              <div className="mt-2 text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200">
+                <strong>Modo Manual Ativo:</strong> Você pode editar as parcelas e valores, mas deve respeitar as regras do Pagamento Indaiá.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Resumo do Pagamento Sem Juros (1+4) */}
+      {isSemJuros1mais4 && semJuros1mais4Calculation && (
+        <div className="mx-4 mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
+          <div className="flex items-center gap-2 mb-2">
+            <Calculator className="h-4 w-4 text-green-500" />
+            <span className="text-sm font-medium text-green-800">
+              Pagamento Sem Juros (1+4) - Entrada + 4 Parcelas Fixas
+            </span>
+          </div>
+          <div className="text-sm text-green-700">
+            <div>Total: {totalProposta.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Entrada (20%): {semJuros1mais4Calculation.valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>4 Parcelas fixas de: {semJuros1mais4Calculation.valorParcelas.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} cada</div>
+            <div className="mt-2 text-xs text-green-600 bg-green-100 p-2 rounded border border-green-300">
+              <strong>✓ Sem juros:</strong> Pagamento dividido igualmente sem acréscimos
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resumo do Pagamento À vista (Dinheiro) - 5% desconto */}
+      {isAVistaDinheiro && aVistaDinheiroCalculation && (
+        <div className="mx-4 mt-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
+          <div className="flex items-center gap-2 mb-2">
+            <Calculator className="h-4 w-4 text-orange-500" />
+            <span className="text-sm font-medium text-orange-800">
+              À vista (Dinheiro) - 5% de Desconto
+            </span>
+          </div>
+          <div className="text-sm text-orange-700">
+            <div>Total original: {totalProposta.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Desconto aplicado (5%): -{aVistaDinheiroCalculation.descontoAplicado.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Total com desconto: {aVistaDinheiroCalculation.valorTotalComDesconto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Entrada (20%): {aVistaDinheiroCalculation.valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Saldo à vista (80%): {aVistaDinheiroCalculation.valorSaldoFinal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div className="mt-2 text-xs text-orange-600 bg-orange-100 p-2 rounded border border-orange-300">
+              <strong>💰 5% de desconto:</strong> Entrada + saldo à vista via boleto
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resumo do Pagamento À vista Parcial (Cartão de Crédito) */}
+      {isAVistaParcialCartao && aVistaParcialCartaoCalculation && (
+        <div className="mx-4 mt-4 p-3 bg-purple-50 border border-purple-200 rounded-md">
+          <div className="flex items-center gap-2 mb-2">
+            <Calculator className="h-4 w-4 text-purple-500" />
+            <span className="text-sm font-medium text-purple-800">
+              À vista Parcial (Cartão de Crédito) - Juros {aVistaParcialCartaoCalculation.percentualJuros.toFixed(2)}% a.m.
+            </span>
+          </div>
+          <div className="text-sm text-purple-700">
+            <div>Total original: {totalProposta.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Entrada (20%): {aVistaParcialCartaoCalculation.valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Restante no cartão: {aVistaParcialCartaoCalculation.valorRestante.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>{aVistaParcialCartaoCalculation.quantidadeParcelasCartao}x de {aVistaParcialCartaoCalculation.valorParcelaCartao.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} (com juros)</div>
+            <div>Total com juros: {aVistaParcialCartaoCalculation.valorTotalComJuros.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div className="mt-2 text-xs text-purple-600 bg-purple-100 p-2 rounded border border-purple-300">
+              <strong>💳 Cartão em até 18x:</strong> Entrada + parcelamento no cartão com juros • Pagamento em até 30 dias
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resumo da Condição Especial do Consultor */}
+      {isCondicaoEspecialConsultor && condicaoEspecialConsultorCalculation && (
+        <div className="mx-4 mt-4 p-3 bg-teal-50 border border-teal-200 rounded-md">
+          <div className="flex items-center gap-2 mb-2">
+            <Calculator className="h-4 w-4 text-teal-500" />
+            <span className="text-sm font-medium text-teal-800">
+              Condição Especial do Consultor - Flexibilidade Total
+            </span>
+          </div>
+          <div className="text-sm text-teal-700">
+            <div>Total original: {totalProposta.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Entrada: {condicaoEspecialConsultorCalculation.valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} em {condicaoEspecialConsultorCalculation.parcelasEntrada}x sem juros</div>
+            <div>Parcelas intermediárias: {condicaoEspecialConsultorCalculation.parcelasIntermediarias}x de {condicaoEspecialConsultorCalculation.valorParcelaIntermediaria.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            {condicaoEspecialConsultorCalculation.temSaldoFinal && (
+              <div>Saldo final: {condicaoEspecialConsultorCalculation.valorSaldoFinal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} em {condicaoEspecialConsultorCalculation.parcelasSaldoFinal}x com juros</div>
+            )}
+            <div>Total com juros: {condicaoEspecialConsultorCalculation.valorTotalComJuros.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div className="mt-2 text-xs text-teal-600 bg-teal-100 p-2 rounded border border-teal-300">
+              <strong>🔧 Flexível:</strong> Entrada mín R$ 1.000 (até 12x) • Parcelas mín R$ 600 • Saldo até 18x com juros
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resumo do Pagamento 50/50 */}
+      {is5050 && pagamento5050Calculation && (
+        <div className="mx-4 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+          <div className="flex items-center gap-2 mb-2">
+            <Calculator className="h-4 w-4 text-amber-500" />
+            <span className="text-sm font-medium text-amber-800">
+              Pagamento 50/50 - Juros {pagamento5050Calculation.percentualJuros.toFixed(2)}% a.m.
+            </span>
+          </div>
+          <div className="text-sm text-amber-700">
+            <div>Total original: {totalProposta.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Entrada (20%): {pagamento5050Calculation.valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Boleto 30 dias (30%): {pagamento5050Calculation.valorPrimeiroBoleto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} - {pagamento5050Calculation.dataPrimeiroBoleto.toLocaleDateString('pt-BR')}</div>
+            <div>Saldo final (50% + juros): {pagamento5050Calculation.valorSaldoFinal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} - {pagamento5050Calculation.dataSaldoFinal.toLocaleDateString('pt-BR')}</div>
+            <div>Juros aplicados: +{pagamento5050Calculation.jurosAplicados.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div>Total com juros: {pagamento5050Calculation.valorTotalComJuros.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}</div>
+            <div className="mt-2 text-xs text-amber-600 bg-amber-100 p-2 rounded border border-amber-300">
+              <strong>📊 50/50:</strong> Entrada 20% • Boleto 30% em 30d • Saldo 50% (30d antes evento) com juros
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modelo de Pagamento */}
       <div className="p-4 grid md:grid-cols-4 gap-4 border-b">
@@ -113,8 +949,11 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
           </Select>
         </div>
         <div className="col-span-1 space-y-1">
-          <label className="text-sm font-medium">Reajuste</label>
-          <Select value={state.reajuste} onValueChange={val=>handleChange('reajuste', val as any)}>
+          <label className="text-sm font-medium flex items-center gap-1">
+            Reajuste
+            {isFieldLocked('reajuste') && <Lock className="h-3 w-3 text-muted-foreground" />}
+          </label>
+          <Select value={state.reajuste} onValueChange={val=>handleChange('reajuste', val as any)} disabled={isFieldLocked('reajuste')}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="Sim">Sim</SelectItem>
@@ -123,12 +962,15 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
           </Select>
         </div>
         <div className="col-span-1 space-y-1">
-          <label className="text-sm font-medium">Juros (%)</label>
-          <Input 
-            type="number" 
-            value={state.juros} 
+          <label className="text-sm font-medium flex items-center gap-1">
+            Juros (%)
+            {isFieldLocked('juros') && <Lock className="h-3 w-3 text-muted-foreground" />}
+          </label>
+          <Input
+            type="number"
+            value={state.juros}
             onChange={e=>handleChange('juros', Number(e.target.value))}
-            disabled={state.reajuste !== 'Sim'}
+            disabled={isFieldLocked('juros') || state.reajuste !== 'Sim'}
           />
         </div>
       </div>
@@ -138,8 +980,11 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
         <div className="bg-zinc-100 dark:bg-zinc-900/40 px-4 py-1 text-sm font-semibold">ENTRADA</div>
         <div className="p-4 grid md:grid-cols-5 gap-4">
           <div className="space-y-1">
-            <label className="text-sm">Entrada?</label>
-            <Select value={state.entrada} onValueChange={val=>handleChange('entrada', val as any)}>
+            <label className="text-sm flex items-center gap-1">
+              Entrada?
+              {isFieldLocked('entrada') && <Lock className="h-3 w-3 text-muted-foreground" />}
+            </label>
+            <Select value={state.entrada} onValueChange={val=>handleChange('entrada', val as any)} disabled={isFieldLocked('entrada')}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Sim">Sim</SelectItem>
@@ -148,13 +993,50 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
             </Select>
           </div>
           <div className="space-y-1">
-            <label className="text-sm">Valor</label>
-            <Input 
-              type="number" 
+            <label className="text-sm flex items-center gap-1">
+              Valor
+              {isPagamentoIndaia && !isCalculating && indaiaCalculation && valorMinimoOriginal > 0 && (
+                <span className="text-xs text-blue-600">(mín: {valorMinimoOriginal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})</span>
+              )}
+              {isSemJuros1mais4 && semJuros1mais4Calculation && (
+                <span className="text-xs text-green-600">(20% fixo: {semJuros1mais4Calculation.valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})</span>
+              )}
+              {isAVistaDinheiro && aVistaDinheiroCalculation && (
+                <span className="text-xs text-orange-600">(20% fixo: {aVistaDinheiroCalculation.valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})</span>
+              )}
+              {isAVistaParcialCartao && aVistaParcialCartaoCalculation && (
+                <span className="text-xs text-purple-600">(20% fixo: {aVistaParcialCartaoCalculation.valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})</span>
+              )}
+              {isCondicaoEspecialConsultor && (
+                <span className="text-xs text-teal-600">(mín R$ 1.000 - flexível)</span>
+              )}
+              {is5050 && pagamento5050Calculation && (
+                <span className="text-xs text-amber-600">(20% fixo: {pagamento5050Calculation.valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})})</span>
+              )}
+            </label>
+            <Input
+              type="number"
               value={state.valorEntrada === 0 ? '' : state.valorEntrada}
               onChange={e=>handleChange('valorEntrada', e.target.value)}
-              disabled={state.entrada!=='Sim'}
+              disabled={state.entrada!=='Sim' || isFieldLocked('valorEntrada')}
+              className={
+                (isPagamentoIndaia && !isCalculating && valorMinimoOriginal > 0 && state.valorEntrada < valorMinimoOriginal) ||
+                (isCondicaoEspecialConsultor && state.valorEntrada > 0 && state.valorEntrada < 1000)
+                  ? 'border-yellow-400 bg-yellow-50' : ''
+              }
             />
+            {isPagamentoIndaia && !isCalculating && valorMinimoOriginal > 0 && state.valorEntrada > 0 && state.valorEntrada < valorMinimoOriginal && (
+              <div className="text-xs text-yellow-600 bg-yellow-50 border border-yellow-200 rounded p-2">
+                <strong>Atenção:</strong> Valor abaixo do mínimo recomendado para Pagamento Indaiá.
+                <br />Mínimo: {valorMinimoOriginal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+              </div>
+            )}
+            {isCondicaoEspecialConsultor && state.valorEntrada > 0 && state.valorEntrada < 1000 && (
+              <div className="text-xs text-yellow-600 bg-yellow-50 border border-yellow-200 rounded p-2">
+                <strong>Atenção:</strong> Valor abaixo do mínimo exigido para Condição Especial do Consultor.
+                <br />Mínimo: R$ 1.000,00
+              </div>
+            )}
           </div>
           <div className="space-y-1">
             <label className="text-sm">Data</label>
@@ -189,13 +1071,35 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
         <div className="bg-zinc-100 dark:bg-zinc-900/40 px-4 py-1 text-sm font-semibold">PARCELAS</div>
         <div className="p-4 grid md:grid-cols-4 gap-4">
           <div className="space-y-1">
-            <label className="text-sm">Qtd. Parcelas</label>
-            <Select value={String(state.qtdMeses)} onValueChange={val=>handleChange('qtdMeses', Number(val))}>
+            <label className="text-sm flex items-center gap-1">
+              Qtd. Parcelas
+              {isFieldLocked('qtdMeses') && <Lock className="h-3 w-3 text-muted-foreground" />}
+              {isPagamentoIndaia && indaiaCalculation && !state.modoManual && (
+                <span className="text-xs text-blue-600">({indaiaCalculation.quantidadeParcelas}x automático)</span>
+              )}
+            </label>
+            <Select
+              value={String(state.qtdMeses)}
+              onValueChange={val=>handleChange('qtdMeses', Number(val))}
+              disabled={isFieldLocked('qtdMeses')}
+            >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {Array.from({length:18},(_,i)=>i+1).map(n => (
-                  <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
-                ))}
+                {(() => {
+                  // Para Pagamento Indaiá, usar o máximo de meses calculado
+                  // Definir máximo de parcelas baseado no modelo
+                  let maxParcelas = 30; // Padrão geral
+
+                  if (isPagamentoIndaia && indaiaCalculation && !isCalculating) {
+                    maxParcelas = Math.max(18, indaiaCalculation.quantidadeParcelas);
+                  } else if (isAVistaParcialCartao) {
+                    maxParcelas = 18; // Máximo de 18x para cartão de crédito
+                  }
+
+                  return Array.from({length: maxParcelas}, (_, i) => i + 1).map(n => (
+                    <SelectItem key={n} value={String(n)}>{n}x</SelectItem>
+                  ));
+                })()}
               </SelectContent>
             </Select>
           </div>
@@ -203,16 +1107,91 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
             <label className="text-sm">Dia Vencimento</label>
             <Input type="number" value={state.diaVencimento} onChange={e=>handleChange('diaVencimento', Number(e.target.value))} />
           </div>
+          {isPagamentoIndaia && indaiaCalculation && (
+            <div className="col-span-2 space-y-1">
+              <label className="text-sm text-blue-600">
+                Valor da Parcela {state.modoManual ? '(Manual)' : '(Calculado)'}
+              </label>
+              <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                {isCalculating ? (
+                  <span className="text-orange-600 animate-pulse">Calculando...</span>
+                ) : state.modoManual ? (
+                  // Em modo manual, calcular dinamicamente
+                  (() => {
+                    const valorRestante = (state.valorTotalComJuros || totalProposta) - state.valorEntrada - (state.valorSaldoFinal || 0);
+                    const valorParcela = state.qtdMeses > 0 ? Math.round((valorRestante / state.qtdMeses) * 100) / 100 : 0;
+                    return valorParcela.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                  })()
+                ) : (
+                  indaiaCalculation?.valorParcelas?.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) || 'R$ 0,00'
+                )}
+              </div>
+            </div>
+          )}
+          {isSemJuros1mais4 && semJuros1mais4Calculation && (
+            <div className="col-span-2 space-y-1">
+              <label className="text-sm text-green-600">
+                Valor das 4 Parcelas Fixas (Sem Juros)
+              </label>
+              <div className="p-2 bg-green-50 border border-green-200 rounded text-sm text-green-800">
+                {semJuros1mais4Calculation.valorParcelas.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} cada
+              </div>
+            </div>
+          )}
+          {isAVistaDinheiro && aVistaDinheiroCalculation && (
+            <div className="col-span-2 space-y-1">
+              <label className="text-sm text-orange-600">
+                Saldo À Vista (80% - Boleto)
+              </label>
+              <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm text-orange-800">
+                {aVistaDinheiroCalculation.valorSaldoFinal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} à vista
+              </div>
+            </div>
+          )}
+          {isAVistaParcialCartao && aVistaParcialCartaoCalculation && (
+            <div className="col-span-2 space-y-1">
+              <label className="text-sm text-purple-600">
+                Parcelas do Cartão (Com Juros {aVistaParcialCartaoCalculation.percentualJuros.toFixed(2)}% a.m.)
+              </label>
+              <div className="p-2 bg-purple-50 border border-purple-200 rounded text-sm text-purple-800">
+                {aVistaParcialCartaoCalculation.quantidadeParcelasCartao}x de {aVistaParcialCartaoCalculation.valorParcelaCartao.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} • Pag. em até 30 dias
+              </div>
+            </div>
+          )}
+          {isCondicaoEspecialConsultor && condicaoEspecialConsultorCalculation && (
+            <div className="col-span-2 space-y-1">
+              <label className="text-sm text-teal-600">
+                Parcelas Intermediárias (Mín R$ 600 cada)
+              </label>
+              <div className="p-2 bg-teal-50 border border-teal-200 rounded text-sm text-teal-800">
+                {condicaoEspecialConsultorCalculation.parcelasIntermediarias}x de {condicaoEspecialConsultorCalculation.valorParcelaIntermediaria.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} • Até 30 dias antes do evento
+              </div>
+            </div>
+          )}
+          {is5050 && pagamento5050Calculation && (
+            <div className="col-span-2 space-y-1">
+              <label className="text-sm text-amber-600">
+                Boleto Intermediário (30% em 30 dias)
+              </label>
+              <div className="p-2 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
+                {pagamento5050Calculation.valorPrimeiroBoleto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} • Venc: {pagamento5050Calculation.dataPrimeiroBoleto.toLocaleDateString('pt-BR')}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Saldo */}
+      {/* Saldo - Oculto para modelos específicos */}
+      {!isSemJuros1mais4 && !isAVistaDinheiro && !isAVistaParcialCartao && (
       <div className="border-b">
         <div className="bg-zinc-100 dark:bg-zinc-900/40 px-4 py-1 text-sm font-semibold">SALDO</div>
         <div className="p-4 grid md:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="text-sm">Forma Pag. Saldo Final</label>
-            <Select value={state.formaSaldoFinal} onValueChange={val=>handleChange('formaSaldoFinal', val)}>
+            <label className="text-sm flex items-center gap-1">
+              Forma Pag. Saldo Final
+              {isFieldLocked('formaSaldoFinal') && <Lock className="h-3 w-3 text-muted-foreground" />}
+            </label>
+            <Select value={state.formaSaldoFinal} onValueChange={val=>handleChange('formaSaldoFinal', val)} disabled={isFieldLocked('formaSaldoFinal')}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
                 {formaSaldoFinalOptions.map(op => (
@@ -221,8 +1200,67 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
               </SelectContent>
             </Select>
           </div>
+          {isPagamentoIndaia && indaiaCalculation && (
+            <div className="space-y-1">
+              <label className="text-sm text-blue-600 flex items-center gap-1">
+                Valor do Saldo Final (30% - 30 dias antes)
+                {getDataSaldoFinal() && (
+                  <span className="flex items-center gap-1 text-xs">
+                    <Calendar className="h-3 w-3" />
+                    Venc: {getDataSaldoFinal()?.toLocaleDateString('pt-BR')}
+                  </span>
+                )}
+              </label>
+              {state.modoManual ? (
+                <Input
+                  type="number"
+                  value={state.valorSaldoFinal || ''}
+                  onChange={(e) => handleChange('valorSaldoFinal', e.target.value)}
+                  className="text-sm"
+                  placeholder="Valor do saldo final"
+                />
+              ) : (
+                <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+                  {isCalculating ? (
+                    <span className="text-orange-600 animate-pulse">Calculando...</span>
+                  ) : (
+                    indaiaCalculation?.valorSaldoFinal?.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'}) || 'R$ 0,00'
+                  )}
+                </div>
+              )}
+              {getDataSaldoFinal() && (
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Data prevista de pagamento: <strong>{getDataSaldoFinal()?.toLocaleDateString('pt-BR')}</strong>
+                </div>
+              )}
+            </div>
+          )}
+          {is5050 && pagamento5050Calculation && (
+            <div className="space-y-1">
+              <label className="text-sm text-amber-600 flex items-center gap-1">
+                Saldo Final (50% + Juros {pagamento5050Calculation.percentualJuros.toFixed(2)}% a.m.)
+                <span className="flex items-center gap-1 text-xs">
+                  <Calendar className="h-3 w-3" />
+                  Venc: {pagamento5050Calculation.dataSaldoFinal.toLocaleDateString('pt-BR')}
+                </span>
+              </label>
+              <div className="p-2 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
+                {pagamento5050Calculation.valorSaldoFinal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+                <div className="text-xs text-amber-600 mt-1">
+                  Valor base (50%): {(totalProposta * 0.5).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})} +
+                  Juros: {pagamento5050Calculation.jurosAplicados.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                Pagamento 30 dias antes do evento • {Math.ceil((pagamento5050Calculation.dataSaldoFinal.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} dias para vencimento
+              </div>
+            </div>
+          )}
         </div>
       </div>
+      )}
 
       {/* OBS */}
       <div className="border-b">

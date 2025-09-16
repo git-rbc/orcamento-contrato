@@ -30,16 +30,18 @@ interface PropostaResumoProps {
     itens: LinhaItem[];
   }>;
   onItemCupomChange?: (itemId: string, cupom: CupomDisponivel | null) => void;
+  isCalculating?: boolean; // Indica se está calculando valores
 }
 
-export function PropostaResumo({ 
-  totalProposta, 
+export function PropostaResumo({
+  totalProposta,
   totalLiquido,
   valorEntrada = 0,
-  clienteId, 
+  clienteId,
   onDescontoChange,
   itensDisponiveis = [],
-  onItemCupomChange
+  onItemCupomChange,
+  isCalculating = false
 }: PropostaResumoProps) {
   // States para cupom
   const [cupomSelecionado, setCupomSelecionado] = useState<CupomDisponivel | null>(null);
@@ -215,14 +217,22 @@ export function PropostaResumo({
         
         {/* Valor original */}
         <div className="text-lg text-muted-foreground">
-          Subtotal: {totalProposta.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+          Subtotal: {isCalculating ? (
+            <span className="text-orange-600 animate-pulse">Calculando...</span>
+          ) : (
+            totalProposta.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})
+          )}
         </div>
 
         {/* Desconto de cupom */}
         {valorDesconto > 0 && (
           <div className="text-sm text-green-600 font-medium">
-            Desconto: -{valorDesconto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
-            {cupomSelecionado?.tipo_desconto === 'percentual' && (
+            Desconto: -{isCalculating ? (
+              <span className="text-orange-600 animate-pulse">Calculando...</span>
+            ) : (
+              valorDesconto.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})
+            )}
+            {cupomSelecionado?.tipo_desconto === 'percentual' && !isCalculating && (
               <span className="text-muted-foreground ml-1">({cupomSelecionado.valor_desconto}%)</span>
             )}
           </div>
@@ -231,13 +241,21 @@ export function PropostaResumo({
         {/* Entrada */}
         {valorEntrada > 0 && (
           <div className="text-sm text-blue-600 font-medium">
-            Entrada: -{valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+            Entrada: -{isCalculating ? (
+              <span className="text-orange-600 animate-pulse">Calculando...</span>
+            ) : (
+              valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})
+            )}
           </div>
         )}
         
         {/* Total final */}
         <div className="text-2xl font-extrabold">
-          {Math.max(0, totalFinalComEntrada).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}
+          {isCalculating ? (
+            <span className="text-orange-600 animate-pulse">Calculando...</span>
+          ) : (
+            Math.max(0, totalFinalComEntrada).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})
+          )}
         </div>
         <div className="text-sm italic">
           {valorEntrada > 0 ? '(Valor restante a pagar)' : '(Consulte valor parcelado)'}

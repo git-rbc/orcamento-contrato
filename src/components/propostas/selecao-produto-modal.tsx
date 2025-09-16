@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,7 +27,7 @@ export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFi
   const [totalProdutos, setTotalProdutos] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const fetchProdutos = async (page = 1, search = '', limit = itemsPerPage, seguimento = seguimentoAtivo) => {
+  const fetchProdutos = useCallback(async (page = 1, search = '', limit = itemsPerPage, seguimento = seguimentoAtivo) => {
     const cacheKey = `produtos_search_cache_${search}_${seguimento || 'todos'}_page_${page}_limit_${limit}`;
     
     // Desabilitar cache quando há seguimento específico para garantir dados corretos
@@ -89,21 +89,20 @@ export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFi
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [itemsPerPage, seguimentoAtivo]);
   
   useEffect(() => {
     if (open) {
-      setSeguimentoAtivo(seguimentoFiltro || null);
-      setCurrentPage(1);
-      fetchProdutos(1, searchTerm, itemsPerPage, seguimentoFiltro || null);
+      if (seguimentoFiltro) {
+        setSeguimentoAtivo(seguimentoFiltro);
+        setCurrentPage(1);
+        fetchProdutos(1, searchTerm, itemsPerPage, seguimentoFiltro);
+      } else {
+        setCurrentPage(1);
+        fetchProdutos(1, searchTerm, itemsPerPage, seguimentoAtivo);
+      }
     }
-  }, [open, seguimentoFiltro]);
-
-  useEffect(() => {
-    if (open && !seguimentoFiltro) {
-      fetchProdutos(1, searchTerm, itemsPerPage, seguimentoAtivo);
-    }
-  }, [searchTerm, itemsPerPage]);
+  }, [open, seguimentoFiltro, fetchProdutos, searchTerm, itemsPerPage, seguimentoAtivo]);
 
   const handleSeguimentoChange = (value: string) => {
     const novoSeguimento = value === 'todos' ? null : value;

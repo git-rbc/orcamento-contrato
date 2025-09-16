@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,7 @@ interface PropostaSecaoProps {
   items: LinhaItem[];
   setItems: (items: LinhaItem[]) => void;
   titulo: string;
+  isCalculating?: boolean; // Adicionar prop para indicar cálculo em andamento
 }
 
 export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps) {
@@ -386,12 +387,12 @@ export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps)
           </thead>
           <tbody>
             {items.map(item => (
-              <>
+              <React.Fragment key={item.id}>
                 {renderItemRow(item, false)}
-                {item.subprodutos && item.subprodutos.map(subproduto => 
+                {item.subprodutos && item.subprodutos.map(subproduto =>
                   renderItemRow(subproduto, true)
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

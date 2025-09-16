@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -24,15 +24,15 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
   const [itemsComDescontoVisivel, setItensComDescontoVisivel] = useState<Set<string>>(new Set());
 
   const handleAddItem = () => {
-    setItems([...items, { 
-      id: crypto.randomUUID(), 
-      produtoId: null, 
-      descricao: '', 
-      valorUnitario: 0, 
-      quantidade: 1, 
-      descontoPermitido: 0, 
-      descontoAplicado: 0, 
-      tipoItem: 'produto', 
+    setItems([...items, {
+      id: crypto.randomUUID(),
+      produtoId: null,
+      descricao: '',
+      valorUnitario: 0,
+      quantidade: 1,
+      descontoPermitido: 0,
+      descontoAplicado: 0,
+      tipoItem: 'produto',
       calculoAutomatico: false,
       subprodutos: []
     }]);
@@ -45,7 +45,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
       alert('Selecione um produto principal primeiro');
       return;
     }
-    
+
     setActiveItemId(parentId);
     setActiveParentProductId(parentItem.produtoId);
     setIsSubprodutoModalOpen(true);
@@ -54,7 +54,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
   const handleRemoveItem = (id: string) => {
     // Verificar se é um item principal
     const isMainItem = items.some(item => item.id === id);
-    
+
     if (isMainItem) {
       setItems(items.filter(item => item.id !== id));
     } else {
@@ -68,7 +68,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
 
   const handleProductSelect = (produto: Produto) => {
     if (!activeItemId) return;
-    
+
     setItems(items.map(item => {
       // Verificar se é o item principal
       if (item.id === activeItemId) {
@@ -82,7 +82,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
           descontoAplicado: 0,
         };
       }
-      
+
       // Verificar subprodutos
       if (item.subprodutos && item.subprodutos.length > 0) {
         const subprodutosAtualizados = item.subprodutos.map(sub => {
@@ -99,13 +99,13 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
           }
           return sub;
         });
-        
+
         return { ...item, subprodutos: subprodutosAtualizados };
       }
-      
+
       return item;
     }));
-    
+
     setActiveItemId(null);
   };
 
@@ -129,7 +129,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
           parentId: activeItemId,
           subprodutos: []
         };
-        
+
         return {
           ...item,
           subprodutos: [...(item.subprodutos || []), novoSubproduto]
@@ -137,11 +137,11 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
       }
       return item;
     }));
-    
+
     setActiveItemId(null);
     setActiveParentProductId(null);
   };
-  
+
   const handleChange = (id: string, field: keyof LinhaItem, value: string | number) => {
     setItems(items.map(item => {
       // Verificar se é o item principal
@@ -152,7 +152,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
         const num = value === '' ? 0 : Number(value);
         return { ...item, [field]: num };
       }
-      
+
       // Verificar subprodutos
       if (item.subprodutos && item.subprodutos.length > 0) {
         const subprodutosAtualizados = item.subprodutos.map(sub => {
@@ -165,10 +165,10 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
           }
           return sub;
         });
-        
+
         return { ...item, subprodutos: subprodutosAtualizados };
       }
-      
+
       return item;
     }));
   };
@@ -183,7 +183,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
     const subtotalPrincipal = item.valorUnitario * item.quantidade;
     const descontoPrincipal = subtotalPrincipal * (item.descontoAplicado / 100);
     const totalPrincipal = subtotalPrincipal - descontoPrincipal;
-    
+
     // Aplicar desconto do cupom no item principal
     let descontoCupomPrincipal = 0;
     if (item.cupomAplicado && totalPrincipal > 0) {
@@ -193,14 +193,14 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
         descontoCupomPrincipal = Math.min(item.cupomAplicado.valor_desconto, totalPrincipal);
       }
     }
-    
+
     const totalPrincipalFinal = Math.max(0, totalPrincipal - descontoCupomPrincipal);
-    
+
     // Calcular total dos subprodutos recursivamente
     const totalSubprodutos = (item.subprodutos || []).reduce((acc, subproduto) => {
       return acc + calcularTotalComSubprodutos(subproduto);
     }, 0);
-    
+
     return totalPrincipalFinal + totalSubprodutos;
   };
 
@@ -208,7 +208,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
     const subtotal = item.valorUnitario * item.quantidade;
     const valorDesconto = subtotal * (item.descontoAplicado / 100);
     const subtotalComDesconto = subtotal - valorDesconto;
-    
+
     // Desconto do cupom individual
     let descontoCupom = 0;
     if (item.cupomAplicado) {
@@ -218,7 +218,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
         descontoCupom = Math.min(item.cupomAplicado.valor_desconto, subtotalComDesconto);
       }
     }
-    
+
     return subtotalComDesconto - descontoCupom;
   };
 
@@ -226,16 +226,16 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
   const renderItemRow = (item: LinhaItem, isSubproduto = false) => {
     const paddingLeft = isSubproduto ? 'pl-8' : 'pl-3';
     const backgroundColor = isSubproduto ? 'bg-muted/30' : '';
-    
+
     return (
       <tr key={item.id} className={`border-b last:border-0 ${backgroundColor}`}>
         <td className={`${paddingLeft} pr-3 py-1`}>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               {isSubproduto && <div className="w-4 h-0.5 bg-muted-foreground"></div>}
-              <Input 
-                placeholder="Clique para selecionar um produto..." 
-                value={item.descricao} 
+              <Input
+                placeholder="Clique para selecionar um produto..."
+                value={item.descricao}
                 onClick={() => openProductSearch(item.id)}
                 readOnly
                 className="cursor-pointer flex-1"
@@ -244,8 +244,8 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
             {item.cupomAplicado && (
               <Badge variant="secondary" className="text-xs ml-6">
                 <Tag className="h-3 w-3 mr-1" />
-                {item.cupomAplicado.codigo} - {item.cupomAplicado.tipo_desconto === 'percentual' 
-                  ? `${item.cupomAplicado.valor_desconto}%` 
+                {item.cupomAplicado.codigo} - {item.cupomAplicado.tipo_desconto === 'percentual'
+                  ? `${item.cupomAplicado.valor_desconto}%`
                   : `R$ ${item.cupomAplicado.valor_desconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                 }
               </Badge>
@@ -254,8 +254,8 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
         </td>
         <td className="px-3 py-1 text-right">
           <div className="flex items-center gap-1">
-            <Input 
-              type="number" 
+            <Input
+              type="number"
               value={item.valorUnitario === 0 ? '' : item.valorUnitario}
               onChange={e => handleChange(item.id,'valorUnitario', Number(e.target.value))}
               readOnly={!!item.produtoId}
@@ -263,9 +263,9 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
             {item.descontoPermitido > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
+                  <Button
                     variant="outline"
-                    size="sm" 
+                    size="sm"
                     className="text-xs h-8 px-2"
                     onClick={() => {
                       const newSet = new Set(itemsComDescontoVisivel);
@@ -299,7 +299,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="0">0%</SelectItem>
-                  {[10, 20, 30, 40, 50, 100].map(d => 
+                  {[10, 20, 30, 40, 50, 100].map(d =>
                     d <= item.descontoPermitido && (
                       <SelectItem key={d} value={String(d)}>{d}%</SelectItem>
                     )
@@ -323,15 +323,15 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
           </td>
         )}
         <td className="px-3 py-1 text-center">
-          <Input 
-            type="number" 
+          <Input
+            type="number"
             value={item.quantidade === 0 ? '' : item.quantidade}
             onChange={e => handleChange(item.id, 'quantidade', Number(e.target.value))}
             className="text-center"
           />
         </td>
         <td className="px-3 py-1 text-right">
-          {isSubproduto 
+          {isSubproduto
             ? calcularTotal(item).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
             : calcularTotalComSubprodutos(item).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
           }
@@ -341,9 +341,9 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
             {!isSubproduto && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => handleAddSubproduto(item.id)}
                     className="h-6 w-6"
                   >
@@ -356,9 +356,9 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
               </Tooltip>
             )}
             {(items.length > 1 || isSubproduto) && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => handleRemoveItem(item.id)}
                 className="h-6 w-6"
               >
@@ -404,12 +404,12 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
           </thead>
           <tbody>
             {items.map(item => (
-              <>
+              <React.Fragment key={item.id}>
                 {renderItemRow(item, false)}
-                {item.subprodutos && item.subprodutos.map(subproduto => 
+                {item.subprodutos && item.subprodutos.map(subproduto =>
                   renderItemRow(subproduto, true)
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
@@ -425,7 +425,7 @@ export function PropostaAlimentacao({ items, setItems, titulo }: PropostaSecaoPr
         onSelect={handleProductSelect}
         seguimentoFiltro="alimentos"
       />
-      
+
       {activeParentProductId && (
         <SubprodutoSelectModal
           open={isSubprodutoModalOpen}

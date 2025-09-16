@@ -230,6 +230,7 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
   const [totalProposta, setTotalProposta] = useState(0);
   const [totalBruto, setTotalBruto] = useState(0); // Total sem descontar entrada
   const [valorDesconto, setValorDesconto] = useState(0);
+  const [isCalculatingPayment, setIsCalculatingPayment] = useState(false);
   
   // Estado para condições de pagamento
   const [condicoesPagamento, setCondicoesPagamento] = useState({
@@ -981,6 +982,9 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-[95vw] h-[90vh] overflow-y-auto">
+        <DialogTitle className="sr-only">
+          {propostaId ? 'Editar Proposta' : 'Nova Proposta'}
+        </DialogTitle>
         {/* Cabeçalho da Proposta */}
         <div className="border rounded shadow-sm bg-white dark:bg-card">
           {/* Faixa superior com logo */}
@@ -1174,12 +1178,13 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
 
           {/* Resumo e Cupom */}
           <div className="px-6 pb-6">
-            <PropostaResumo 
-              totalProposta={totalBruto} 
+            <PropostaResumo
+              totalProposta={totalBruto}
               totalLiquido={totalProposta}
               valorEntrada={valorEntrada}
               clienteId={clienteId}
               onDescontoChange={handleDescontoChange}
+              isCalculating={isCalculatingPayment}
               itensDisponiveis={[
                 { categoria: 'Alimentação', itens: alimentacaoItens },
                 { categoria: 'Bebidas', itens: bebidasItens },
@@ -1192,11 +1197,13 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
 
           {/* Condições de Pagamento */}
           <div className="px-6 pb-6">
-            <PropostaCondicoesPagamento 
-              totalProposta={totalProposta - valorDesconto} 
+            <PropostaCondicoesPagamento
+              totalProposta={totalProposta - valorDesconto}
               onValorEntradaChange={setValorEntrada}
               onCondicoesPagamentoChange={setCondicoesPagamento}
+              onIsCalculatingChange={setIsCalculatingPayment}
               initialValues={condicoesPagamento}
+              dataEvento={dataEvento}
             />
           </div>
 
