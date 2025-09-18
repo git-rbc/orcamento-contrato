@@ -40,31 +40,16 @@ export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps)
   };
 
   const handleAddSubproduto = (parentId: string) => {
-    setItems(items.map(item => {
-      if (item.id === parentId) {
-        const novoSubproduto: LinhaItem = {
-          id: crypto.randomUUID(),
-          produtoId: null,
-          servicoTemplateId: 'e3f4d5c6-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
-          descricao: '',
-          valorUnitario: 0,
-          quantidade: 1,
-          descontoPermitido: 0,
-          descontoAplicado: 0,
-          tipoItem: 'produto',
-          calculoAutomatico: false,
-          isSubproduto: true,
-          parentId: parentId,
-          subprodutos: []
-        };
-        
-        return {
-          ...item,
-          subprodutos: [...(item.subprodutos || []), novoSubproduto]
-        };
-      }
-      return item;
-    }));
+    // Encontrar o item pai para obter o produtoId
+    const parentItem = items.find(item => item.id === parentId);
+    if (!parentItem || !parentItem.produtoId) {
+      alert('Selecione um produto principal primeiro');
+      return;
+    }
+
+    setActiveItemId(parentId);
+    setActiveParentProductId(parentItem.produtoId);
+    setIsSubprodutoModalOpen(true);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -124,7 +109,40 @@ export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps)
     
     setActiveItemId(null);
   };
-  
+
+  const handleSubprodutoSelect = (subproduto: any) => {
+    if (!activeItemId) return;
+
+    setItems(items.map(item => {
+      if (item.id === activeItemId) {
+        const novoSubproduto: LinhaItem = {
+          id: crypto.randomUUID(),
+          produtoId: subproduto.id,
+          servicoTemplateId: 'e3f4d5c6-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
+          descricao: subproduto.nome,
+          valorUnitario: subproduto.valor,
+          quantidade: 1,
+          descontoPermitido: 0,
+          descontoAplicado: 0,
+          tipoItem: 'produto',
+          calculoAutomatico: false,
+          isSubproduto: true,
+          parentId: activeItemId,
+          subprodutos: []
+        };
+
+        return {
+          ...item,
+          subprodutos: [...(item.subprodutos || []), novoSubproduto]
+        };
+      }
+      return item;
+    }));
+
+    setActiveItemId(null);
+    setActiveParentProductId(null);
+  };
+
   const handleChange = (id: string, field: keyof LinhaItem, value: string | number) => {
     setItems(items.map(item => {
       // Verificar se é o item principal
@@ -407,6 +425,12 @@ export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps)
         onOpenChange={setIsModalOpen}
         onSelect={handleProductSelect}
         seguimentoFiltro="bebidas"
+      />
+      <SubprodutoSelectModal
+        open={isSubprodutoModalOpen}
+        onOpenChange={setIsSubprodutoModalOpen}
+        onSelect={handleSubprodutoSelect}
+        parentProductId={activeParentProductId}
       />
       </div>
     </TooltipProvider>

@@ -105,7 +105,6 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
   const [isCalculating, setIsCalculating] = useState(false);
   const [valorMinimoOriginal, setValorMinimoOriginal] = useState<number>(0);
   const lastCalculationRef = useRef<string>('');
-  const calculationTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const formaPgtoOptions = ['PIX','Cartão de Crédito (Máquina)','Cartão de Crédito (Vindi)','Boleto (Vindi)','Dinheiro','TED'];
   const statusPgtoOptions = ['Realizado durante a reunião','Será realizado com o Pós Vendas'];
@@ -256,17 +255,12 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
         return; // Evitar recálculo se os parâmetros são os mesmos
       }
 
-      // Cancelar timer anterior se existir
-      if (calculationTimerRef.current) {
-        clearTimeout(calculationTimerRef.current);
-      }
-
       // Marcar que está calculando
       setIsCalculating(true);
       onIsCalculatingChange?.(true);
 
-      // Aplicar delay de 2 segundos para o cálculo (debounce)
-      calculationTimerRef.current = setTimeout(() => {
+      // Usar um timeout muito pequeno apenas para quebrar o loop de renderização
+      const timer = setTimeout(() => {
         try {
           const errors = validarPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
           setValidationErrors(errors);
@@ -279,49 +273,42 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
             // Sempre atualizar o valor mínimo com o cálculo correto (20% do valor total com juros)
             setValorMinimoOriginal(calculation.valorEntrada);
 
-          // Atualizar estado automaticamente apenas se não estiver em modo manual
-          const newState = {
-            ...state,
-            calculoAutomatico: true,
-            entrada: 'Sim' as const,
-            reajuste: 'Sim' as const,
-            juros: calculation.percentualJuros,
-            valorTotalComJuros: calculation.valorTotalComJuros,
-            formaSaldoFinal: 'A ser pago até 30 dias antes do evento',
-            // Só atualizar valores calculados se não estiver em modo manual
-            ...(state.modoManual ? {} : {
-              valorEntrada: calculation.valorEntrada,
-              qtdMeses: calculation.quantidadeParcelas,
-              valorSaldoFinal: calculation.valorSaldoFinal,
-            })
-          };
+            // Atualizar estado automaticamente apenas se não estiver em modo manual
+            const newState = {
+              ...state,
+              calculoAutomatico: true,
+              entrada: 'Sim' as const,
+              reajuste: 'Sim' as const,
+              juros: calculation.percentualJuros,
+              valorTotalComJuros: calculation.valorTotalComJuros,
+              formaSaldoFinal: 'A ser pago até 30 dias antes do evento',
+              // Só atualizar valores calculados se não estiver em modo manual
+              ...(state.modoManual ? {} : {
+                valorEntrada: calculation.valorEntrada,
+                qtdMeses: calculation.quantidadeParcelas,
+                valorSaldoFinal: calculation.valorSaldoFinal,
+              })
+            };
 
-          setState(newState);
-          // Só atualizar callback de entrada se não estiver em modo manual
-          if (!state.modoManual) {
-            onValorEntradaChange(calculation.valorEntrada);
-          } else {
-            onValorEntradaChange(state.valorEntrada);
+            setState(newState);
+            // Só atualizar callback de entrada se não estiver em modo manual
+            if (!state.modoManual) {
+              onValorEntradaChange(calculation.valorEntrada);
+            } else {
+              onValorEntradaChange(state.valorEntrada);
+            }
+            onCondicoesPagamentoChange?.(newState);
           }
-          onCondicoesPagamentoChange?.(newState);
+        } catch (error) {
+          console.error('Erro ao calcular Pagamento Indaiá:', error);
+          setValidationErrors(['Erro no cálculo do Pagamento Indaiá']);
+        } finally {
+          setIsCalculating(false);
+          onIsCalculatingChange?.(false);
         }
-      } catch (error) {
-        console.error('Erro ao calcular Pagamento Indaiá:', error);
-        setValidationErrors(['Erro no cálculo do Pagamento Indaiá']);
-      } finally {
-        setIsCalculating(false);
-        onIsCalculatingChange?.(false);
-      }
-      }, 500); // Delay de 500ms
+      }, 0); // Timeout de 0ms apenas para quebrar o loop
 
-      return () => {
-        if (calculationTimerRef.current) {
-          clearTimeout(calculationTimerRef.current);
-          calculationTimerRef.current = null;
-        }
-        setIsCalculating(false);
-        onIsCalculatingChange?.(false);
-      };
+      return () => clearTimeout(timer);
     } else if (!isPagamentoIndaia) {
       // Reset quando sair do Pagamento Indaiá
       setIndaiaCalculation(null);

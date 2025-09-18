@@ -608,7 +608,9 @@ function SidebarComponent({ className }: SidebarProps) {
                   const subprodutosSubmenu = contratoMenuDB.children.find((child: any) => child.slug === 'subprodutos');
                   if (subprodutosSubmenu) {
                     item.children = item.children || [];
-                    item.children.push({
+                    const produtosIndex = item.children.findIndex(child => child.slug === 'produtos');
+                    const insertIndex = produtosIndex >= 0 ? produtosIndex + 1 : item.children.length;
+                    item.children.splice(insertIndex, 0, {
                       title: 'Sub-produtos',
                       slug: 'subprodutos',
                       href: '/dashboard/contratos/subprodutos',

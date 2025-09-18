@@ -174,28 +174,53 @@ export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFi
               </Button>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <Select value={seguimentoAtivo || 'todos'} onValueChange={handleSeguimentoChange}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os seguimentos</SelectItem>
-                  <SelectItem value="alimentos">Alimentos</SelectItem>
-                  <SelectItem value="bebidas">Bebidas</SelectItem>
-                  <SelectItem value="decoracao">Decoração</SelectItem>
-                  <SelectItem value="itens_extra">Itens Extra</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {(seguimentoAtivo || searchTerm) && (
-                <Button variant="outline" size="sm" onClick={limparFiltros}>
-                  <X className="h-4 w-4 mr-1" />
-                  Limpar filtros
-                </Button>
-              )}
-            </div>
+            {/* Filtro estático quando há seguimentoFiltro ou dropdown quando não há */}
+            {seguimentoFiltro ? (
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-md">
+                  <span className="text-sm font-medium">Categoria:</span>
+                  <span className="text-sm text-primary font-semibold">
+                    {seguimentoFiltro === 'alimentos' && 'Alimentos'}
+                    {seguimentoFiltro === 'bebidas' && 'Bebidas'}
+                    {seguimentoFiltro === 'decoracao' && 'Decoração'}
+                    {seguimentoFiltro === 'itens_extra' && 'Itens Extra'}
+                  </span>
+                </div>
+                {searchTerm && (
+                  <Button variant="outline" size="sm" onClick={() => {
+                    setSearchTerm('');
+                    fetchProdutos(1, '', itemsPerPage, seguimentoFiltro);
+                  }}>
+                    <X className="h-4 w-4 mr-1" />
+                    Limpar busca
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={seguimentoAtivo || 'todos'} onValueChange={handleSeguimentoChange}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os seguimentos</SelectItem>
+                    <SelectItem value="alimentos">Alimentos</SelectItem>
+                    <SelectItem value="bebidas">Bebidas</SelectItem>
+                    <SelectItem value="decoracao">Decoração</SelectItem>
+                    <SelectItem value="itens_extra">Itens Extra</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {(seguimentoAtivo || searchTerm) && (
+                  <Button variant="outline" size="sm" onClick={limparFiltros}>
+                    <X className="h-4 w-4 mr-1" />
+                    Limpar filtros
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex-1 overflow-auto min-h-0">
             <div className="h-full">

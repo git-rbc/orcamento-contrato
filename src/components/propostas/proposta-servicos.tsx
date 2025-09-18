@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Tag } from 'lucide-react';
@@ -23,16 +23,104 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [itemsComDescontoVisivel, setItensComDescontoVisivel] = useState<Set<string>>(new Set());
   const [seguimentoFiltro, setSeguimentoFiltro] = useState<'alimentos' | 'bebidas' | 'decoracao' | 'itens_extra' | null>(null);
+  const [validationMessages, setValidationMessages] = useState<Map<string, string>>(new Map());
+  const valoresMinimosRef = useRef<Map<string, number>>(new Map());
 
-  const addItem = () => setItems([...items, { 
-    id: crypto.randomUUID(), 
-    produtoId: null, 
-    descricao: '', 
-    valorUnitario: 0, 
-    quantidade: 1, 
-    descontoPermitido: 0, 
-    descontoAplicado: 0, 
-    tipoItem: 'produto', 
+  // Função para verificar se um item é editável (Locação, Tx. Ecad, Gerador de Energia)
+  const isItemEditavel = (item: LinhaItem) => {
+    const descricaoLower = item.descricao.toLowerCase();
+    return descricaoLower.includes('locação') ||
+           descricaoLower.includes('locacao') ||
+           descricaoLower.includes('tx. ecad') ||
+           descricaoLower.includes('ecad') ||
+           descricaoLower.includes('gerador de energia') ||
+           descricaoLower.includes('gerador') && descricaoLower.includes('energia');
+  };
+
+  // Buscar valores mínimos cadastrados nos serviços template
+  const buscarValorMinimoCadastrado = useCallback(async (item: LinhaItem): Promise<number> => {
+    if (!item.servicoTemplateId || !espacoId) return 0;
+
+    // Verificar se já temos o valor em cache
+    const cacheKey = `${item.servicoTemplateId}_${espacoId}_${diaSemana}`;
+    if (valoresMinimosRef.current.has(cacheKey)) {
+      return valoresMinimosRef.current.get(cacheKey)!;
+    }
+
+    try {
+      const requestBody: any = {
+        servicoTemplateId: item.servicoTemplateId,
+        espacoId,
+        diaSemana,
+        numPessoas: typeof numPessoas === 'number' ? numPessoas : undefined
+      };
+
+      const response = await fetch('/api/servicos-template/calcular', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const valorMinimo = result.data?.valorCalculado || 0;
+
+        // Armazenar em cache
+        valoresMinimosRef.current.set(cacheKey, valorMinimo);
+        return valorMinimo;
+      }
+    } catch (error) {
+      console.error('Erro ao buscar valor mínimo:', error);
+    }
+
+    return 0;
+  }, [espacoId, diaSemana, numPessoas]);
+
+  // Função para buscar valor mínimo de um item específico
+  const obterValorMinimo = useCallback(async (itemId: string): Promise<number> => {
+    const item = items.find(i => i.id === itemId);
+    if (!item || !isItemEditavel(item) || !item.calculoAutomatico) return 0;
+
+    return await buscarValorMinimoCadastrado(item);
+  }, [items, buscarValorMinimoCadastrado]);
+
+  // Estados para gerenciar valores de input em formato string
+  const [inputValues, setInputValues] = useState<Map<string, string>>(new Map());
+
+  // Função para formatar valor como moeda brasileira
+  const formatCurrency = useCallback((value: number): string => {
+    if (value === 0) return '';
+    return value.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }, []);
+
+  // Função para converter string em número
+  const parseInputValue = useCallback((value: string): number => {
+    if (!value || value.trim() === '') return 0;
+
+    // Remove tudo exceto números, vírgulas e pontos
+    const cleanValue = value.replace(/[^\d.,]/g, '');
+
+    if (!cleanValue) return 0;
+
+    // Substitui vírgula por ponto para conversão
+    const numberValue = parseFloat(cleanValue.replace(',', '.'));
+    return isNaN(numberValue) ? 0 : numberValue;
+  }, []);
+
+  const addItem = () => setItems([...items, {
+    id: crypto.randomUUID(),
+    produtoId: null,
+    descricao: '',
+    valorUnitario: 0,
+    quantidade: 1,
+    descontoPermitido: 0,
+    descontoAplicado: 0,
+    tipoItem: 'produto',
     calculoAutomatico: false
   }]);
 
@@ -84,16 +172,71 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
     setActiveItemId(null);
   };
 
-  const change = (id: string, field: keyof LinhaItem, value: string | number) => {
-    setItems(items.map(i => {
-      if (i.id !== id) return i;
-      if (field === 'descricao') {
-        return { ...i, descricao: String(value) };
+  const change = useCallback((id: string, field: keyof LinhaItem, value: string | number) => {
+    // Limpar mensagem de validação anterior para este item
+    setValidationMessages(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(id);
+      return newMap;
+    });
+
+    if (field === 'descricao') {
+      const updatedItems = items.map(i =>
+        i.id === id ? { ...i, descricao: String(value) } : i
+      );
+      setItems(updatedItems);
+      return;
+    }
+
+    // Para campo numérico, sempre atualizar o valor sem validação durante a digitação
+    const num = value === '' ? 0 : Number(value);
+    const updatedItems = items.map(i =>
+      i.id === id ? { ...i, [field]: num } : i
+    );
+    setItems(updatedItems);
+  }, [items]);
+
+  // Função para validar apenas quando sair do foco (onBlur)
+  const validateOnBlur = useCallback(async (id: string, field: keyof LinhaItem) => {
+    const item = items.find(i => i.id === id);
+    if (!item || field !== 'valorUnitario' || !isItemEditavel(item)) return;
+
+    const valorAtual = item.valorUnitario;
+    if (valorAtual > 0) {
+      const valorMinimo = await obterValorMinimo(id);
+
+      if (valorAtual < valorMinimo && valorMinimo > 0) {
+        // Aplicar valor mínimo automaticamente
+        const updatedItems = items.map(i =>
+          i.id === id ? { ...i, [field]: valorMinimo } : i
+        );
+        setItems(updatedItems);
       }
-      const num = value === '' ? 0 : Number(value);
-      return { ...i, [field]: num };
-    }));
-  };
+    }
+  }, [items, obterValorMinimo]);
+
+  // Função para lidar com mudanças no input
+  const handleInputChange = useCallback((id: string, value: string) => {
+    // Atualizar valor do input para permitir digitação livre
+    setInputValues(prev => {
+      const newMap = new Map(prev);
+      newMap.set(id, value);
+      return newMap;
+    });
+
+    // Converter para número e atualizar o item
+    const numericValue = parseInputValue(value);
+    change(id, 'valorUnitario', numericValue);
+  }, [change, parseInputValue]);
+
+  // Função para obter valor do input
+  const getInputValue = useCallback((item: LinhaItem): string => {
+    const inputValue = inputValues.get(item.id);
+    if (inputValue !== undefined) {
+      return inputValue;
+    }
+    return formatCurrency(item.valorUnitario);
+  }, [inputValues, formatCurrency]);
 
   const openProductSearch = (itemId: string) => {
     const targetItem = items.find(i => i.id === itemId);
@@ -134,18 +277,20 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
 
   // Função para renderizar uma linha de item
   const renderItemRow = (item: LinhaItem) => {
-    const isDecoracaoItem = item.descricao === 'Selecione a decoração clicando aqui' || 
+    const isDecoracaoItem = item.descricao === 'Selecione a decoração clicando aqui' ||
                            item.descricao.toLowerCase().includes('decoração') ||
                            item.descricao.toLowerCase().includes('decoracao');
-    
+
+    const itemEditavel = isItemEditavel(item);
+
     return (
       <tr key={item.id} className="border-b last:border-0">
         <td className="pl-3 pr-3 py-1">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Input 
-                placeholder={item.calculoAutomatico ? "Serviço template (calculado automaticamente)" : "Clique para selecionar um produto..."} 
-                value={item.descricao} 
+              <Input
+                placeholder={item.calculoAutomatico ? "Serviço template (calculado automaticamente)" : "Clique para selecionar um produto..."}
+                value={item.descricao}
                 onClick={() => !item.calculoAutomatico && openProductSearch(item.id)}
                 readOnly
                 className={`${!item.calculoAutomatico ? 'cursor-pointer' : ''} flex-1`}
@@ -154,8 +299,8 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
             {item.cupomAplicado && (
               <Badge variant="secondary" className="text-xs ml-6">
                 <Tag className="h-3 w-3 mr-1" />
-                {item.cupomAplicado.codigo} - {item.cupomAplicado.tipo_desconto === 'percentual' 
-                  ? `${item.cupomAplicado.valor_desconto}%` 
+                {item.cupomAplicado.codigo} - {item.cupomAplicado.tipo_desconto === 'percentual'
+                  ? `${item.cupomAplicado.valor_desconto}%`
                   : `R$ ${item.cupomAplicado.valor_desconto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
                 }
               </Badge>
@@ -163,16 +308,48 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
           </div>
         </td>
         <td className="px-3 py-1 text-right">
-          {calcularTotal(item).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+          {itemEditavel ? (
+            <div className="space-y-1">
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">R$</span>
+                <Input
+                  type="text"
+                  value={getInputValue(item)}
+                  onChange={(e) => handleInputChange(item.id, e.target.value)}
+                  onBlur={(e) => {
+                    // Formatar valor ao sair do campo
+                    const numericValue = parseInputValue(e.target.value);
+                    if (numericValue > 0) {
+                      setInputValues(prev => {
+                        const newMap = new Map(prev);
+                        newMap.set(item.id, formatCurrency(numericValue));
+                        return newMap;
+                      });
+                    }
+                    validateOnBlur(item.id, 'valorUnitario');
+                  }}
+                  className="w-32 text-sm text-right pl-8"
+                  placeholder="0,00"
+                />
+              </div>
+              {validationMessages.has(item.id) && (
+                <div className="text-xs text-red-600 font-medium">
+                  {validationMessages.get(item.id)}
+                </div>
+              )}
+            </div>
+          ) : (
+            calcularTotal(item).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})
+          )}
         </td>
         <td className="text-center">
           <div className="flex items-center gap-1">
             {isDecoracaoItem && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     onClick={() => removeItem(item.id)}
                     className="h-6 w-6"
                   >
