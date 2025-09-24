@@ -47,6 +47,7 @@ next-env.d.ts
 
 # CLAUDE
 CLAUDE.md
+.claude/
 
 # Roo
 .roo/

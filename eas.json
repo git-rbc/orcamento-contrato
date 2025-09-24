@@ -1,0 +1,47 @@
+{
+  "cli": {
+    "version": ">= 5.9.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    },
+    "production": {
+      "ios": {
+        "resourceClass": "m-medium",
+        "buildConfiguration": "Release",
+        "distribution": "store"
+      },
+    "internal": {
+      "ios": {
+        "resourceClass": "m-medium",
+        "buildConfiguration": "Release",
+        "distribution": "internal",
+        "simulator": true
+      },
+      "android": {
+        "resourceClass": "m-medium",
+        "buildType": "apk"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "emersonc.oliveira@icloud.com",
+        "ascAppId": "6752862275",
+        "appleTeamId": "COLOQUE_O_TEAM_ID_AQUI"
+      }
+    }
+  }
+}

@@ -50,19 +50,17 @@ export interface CondicoesPagamentoState {
   valorTotalComJuros?: number;
   valorSaldoFinal?: number;
   calculoAutomatico?: boolean;
-  modoManual?: boolean; // Toggle para permitir edição manual
 }
 
 interface Props {
   totalProposta: number;
   onValorEntradaChange: (value: number) => void;
   onCondicoesPagamentoChange?: (condicoes: CondicoesPagamentoState) => void;
-  onIsCalculatingChange?: (isCalculating: boolean) => void;
   initialValues?: Partial<CondicoesPagamentoState>;
   dataEvento?: Date; // Data do evento para cálculos do Pagamento Indaiá
 }
 
-export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange, onCondicoesPagamentoChange, onIsCalculatingChange, initialValues, dataEvento }: Props) {
+export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange, onCondicoesPagamentoChange, initialValues, dataEvento }: Props) {
   const modeloOptions = [
     'Pagamento Indaiá',
     'Sem Juros (1+4)',
@@ -90,7 +88,6 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
     valorTotalComJuros: initialValues?.valorTotalComJuros || 0,
     valorSaldoFinal: initialValues?.valorSaldoFinal || 0,
     calculoAutomatico: initialValues?.calculoAutomatico || false,
-    modoManual: initialValues?.modoManual || false,
   });
 
   const [indaiaCalculation, setIndaiaCalculation] = useState<any>(null);
@@ -100,11 +97,6 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
   const [condicaoEspecialConsultorCalculation, setCondicaoEspecialConsultorCalculation] = useState<CondicaoEspecialConsultorCalculation | null>(null);
   const [pagamento5050Calculation, setPagamento5050Calculation] = useState<Pagamento5050Calculation | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [isTypingEntrada, setIsTypingEntrada] = useState(false);
-  const [entradaBuffer, setEntradaBuffer] = useState<string>('');
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [valorMinimoOriginal, setValorMinimoOriginal] = useState<number>(0);
-  const lastCalculationRef = useRef<string>('');
 
   const formaPgtoOptions = ['PIX','Cartão de Crédito (Máquina)','Cartão de Crédito (Vindi)','Boleto (Vindi)','Dinheiro','TED'];
   const statusPgtoOptions = ['Realizado durante a reunião','Será realizado com o Pós Vendas'];
@@ -155,24 +147,8 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
     return false;
   };
 
-  const isFieldManualEditable = (field: string) => {
-    // Campos editáveis apenas no modo manual do Pagamento Indaiá
-    if (isPagamentoIndaia && ['valorEntrada', 'qtdMeses'].includes(field)) {
-      return state.modoManual;
-    }
-    return true; // Para outros modelos, permite edição normal
-  };
-
   const isFieldLocked = (field: string) => {
-    if (isFieldAlwaysLocked(field) || isFieldNeverEditable(field)) {
-      return true;
-    }
-
-    if (isPagamentoIndaia) {
-      return !isFieldManualEditable(field);
-    }
-
-    return false; // Para outros modelos de pagamento
+    return isFieldAlwaysLocked(field) || isFieldNeverEditable(field);
   };
 
   // Função para calcular data do saldo final (30 dias antes do evento)
@@ -183,142 +159,49 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
     return dataSaldo;
   };
 
-  // Função para recalcular quando valores são alterados manualmente
-  const recalcularPagamentoManual = (novoState: CondicoesPagamentoState, tipoAlteracao: 'entrada' | 'parcelas' | 'saldo') => {
-    if (!isPagamentoIndaia || !dataEvento || !novoState.modoManual || !indaiaCalculation) return novoState;
 
-    try {
-      const valorTotalComJuros = novoState.valorTotalComJuros || indaiaCalculation.valorTotalComJuros;
-
-      // Recalcular baseado no tipo de alteração
-      if (tipoAlteracao === 'parcelas') {
-        // Quando muda parcelas, recalcular saldo final (30% do valor remanescente)
-        const valorEntrada = novoState.valorEntrada;
-        const valorRemanescente = valorTotalComJuros - valorEntrada;
-        const novoValorSaldoFinal = Math.round(valorRemanescente * 0.30 * 100) / 100;
-
-
-        return {
-          ...novoState,
-          valorSaldoFinal: novoValorSaldoFinal,
-          // O valor da parcela será calculado dinamicamente na UI
-        };
-      } else if (tipoAlteracao === 'entrada') {
-        // Quando muda entrada, ajustar proporcionalmente parcelas e saldo
-        const novaEntrada = novoState.valorEntrada;
-        const valorRestante = valorTotalComJuros - novaEntrada;
-
-        // Manter proporção 70% parcelas / 30% saldo final do valor restante
-        const valorSaldoFinal = Math.round(valorRestante * 0.3 * 100) / 100;
-
-        return {
-          ...novoState,
-          valorSaldoFinal,
-        };
-      } else if (tipoAlteracao === 'saldo') {
-        // Quando muda saldo final, o valor das parcelas se ajusta automaticamente
-        // Não precisa fazer nada, a UI já calculará dinamicamente
-        return novoState;
-      }
-
-      return novoState;
-    } catch (error) {
-      console.error('Erro no recálculo manual:', error);
-      return novoState;
-    }
-  };
-
-  // useEffect para debounce da entrada
-  useEffect(() => {
-    if (isTypingEntrada && entradaBuffer !== '') {
-      const timer = setTimeout(() => {
-        const num = Number(entradaBuffer);
-        if (isPagamentoIndaia && dataEvento && num > 0 && valorMinimoOriginal > 0) {
-          if (num < valorMinimoOriginal) {
-            console.warn(`Valor de entrada abaixo do mínimo permitido: ${valorMinimoOriginal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`);
-          }
-        }
-        setIsTypingEntrada(false);
-      }, 500); // 500ms de debounce
-
-      return () => clearTimeout(timer);
-    }
-  }, [entradaBuffer, isTypingEntrada, isPagamentoIndaia, dataEvento, totalProposta]);
 
   // Recalcular valores quando Pagamento Indaiá for selecionado
   useEffect(() => {
     if (isPagamentoIndaia && dataEvento && totalProposta > 0) {
-      // Criar uma chave única para evitar recálculos desnecessários
-      const calculationKey = `${totalProposta}-${dataEvento.getTime()}-${state.modoManual}`;
+      try {
+        const errors = validarPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
+        setValidationErrors(errors);
 
-      if (lastCalculationRef.current === calculationKey) {
-        return; // Evitar recálculo se os parâmetros são os mesmos
-      }
+        if (errors.length === 0) {
+          const calculation = calcularPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
+          setIndaiaCalculation(calculation);
 
-      // Marcar que está calculando
-      setIsCalculating(true);
-      onIsCalculatingChange?.(true);
+          // Atualizar estado automaticamente
+          const newState = {
+            ...state,
+            calculoAutomatico: true,
+            entrada: 'Sim' as const,
+            reajuste: 'Sim' as const,
+            juros: calculation.percentualJuros,
+            valorEntrada: calculation.valorEntrada,
+            qtdMeses: calculation.quantidadeParcelas,
+            valorSaldoFinal: calculation.valorSaldoFinal,
+            valorTotalComJuros: calculation.valorTotalComJuros,
+            formaSaldoFinal: 'A ser pago até 30 dias antes do evento',
+          };
 
-      // Usar um timeout muito pequeno apenas para quebrar o loop de renderização
-      const timer = setTimeout(() => {
-        try {
-          const errors = validarPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
-          setValidationErrors(errors);
-
-          if (errors.length === 0) {
-            const calculation = calcularPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
-            setIndaiaCalculation(calculation);
-            lastCalculationRef.current = calculationKey;
-
-            // Sempre atualizar o valor mínimo com o cálculo correto (20% do valor total com juros)
-            setValorMinimoOriginal(calculation.valorEntrada);
-
-            // Atualizar estado automaticamente apenas se não estiver em modo manual
-            const newState = {
-              ...state,
-              calculoAutomatico: true,
-              entrada: 'Sim' as const,
-              reajuste: 'Sim' as const,
-              juros: calculation.percentualJuros,
-              valorTotalComJuros: calculation.valorTotalComJuros,
-              formaSaldoFinal: 'A ser pago até 30 dias antes do evento',
-              // Só atualizar valores calculados se não estiver em modo manual
-              ...(state.modoManual ? {} : {
-                valorEntrada: calculation.valorEntrada,
-                qtdMeses: calculation.quantidadeParcelas,
-                valorSaldoFinal: calculation.valorSaldoFinal,
-              })
-            };
-
-            setState(newState);
-            // Só atualizar callback de entrada se não estiver em modo manual
-            if (!state.modoManual) {
-              onValorEntradaChange(calculation.valorEntrada);
-            } else {
-              onValorEntradaChange(state.valorEntrada);
-            }
-            onCondicoesPagamentoChange?.(newState);
-          }
-        } catch (error) {
-          console.error('Erro ao calcular Pagamento Indaiá:', error);
-          setValidationErrors(['Erro no cálculo do Pagamento Indaiá']);
-        } finally {
-          setIsCalculating(false);
-          onIsCalculatingChange?.(false);
+          setState(newState);
+          onValorEntradaChange(calculation.valorEntrada);
+          onCondicoesPagamentoChange?.(newState);
         }
-      }, 0); // Timeout de 0ms apenas para quebrar o loop
-
-      return () => clearTimeout(timer);
+      } catch (error) {
+        console.error('Erro ao calcular Pagamento Indaiá:', error);
+        setValidationErrors(['Erro no cálculo do Pagamento Indaiá']);
+      }
     } else if (!isPagamentoIndaia) {
       // Reset quando sair do Pagamento Indaiá
       setIndaiaCalculation(null);
       setValidationErrors([]);
-      setValorMinimoOriginal(0);
       if (state.calculoAutomatico) {
         const newState = {
           ...state,
           calculoAutomatico: false,
-          modoManual: false,
           juros: 0,
           reajuste: 'Não' as const
         };
@@ -592,38 +475,15 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
     }
   }, [is5050, totalProposta, dataEvento, state.juros]);
 
-  const valorRestante = isPagamentoIndaia && indaiaCalculation && !isCalculating
+  const valorRestante = isPagamentoIndaia && indaiaCalculation
     ? indaiaCalculation.valorTotalComJuros - state.valorEntrada - (state.valorSaldoFinal || 0)
     : Math.max(totalProposta - state.valorEntrada, 0);
 
   const valorParcela = state.qtdMeses > 0 ? Math.round((valorRestante / state.qtdMeses) * 100) / 100 : 0;
 
   const resumoSimulador = () => {
-    if (isPagamentoIndaia && isCalculating) {
-      return "Calculando...";
-    }
-
     if (isPagamentoIndaia && indaiaCalculation) {
-      if (state.modoManual) {
-        // Em modo manual, usar valores atuais do estado
-        const valorTotalComJuros = state.valorTotalComJuros || indaiaCalculation.valorTotalComJuros;
-        const valorEntrada = state.valorEntrada;
-        const qtdParcelas = state.qtdMeses;
-        const valorSaldoFinal = state.valorSaldoFinal || 0;
-
-        // Calcular valor da parcela dinamicamente
-        const valorRestanteParaParcelas = valorTotalComJuros - valorEntrada - valorSaldoFinal;
-        const valorParcela = qtdParcelas > 0 ? Math.round((valorRestanteParaParcelas / qtdParcelas) * 100) / 100 : 0;
-
-        const entrada = valorEntrada.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-        const parcelas = `${qtdParcelas}x de ${valorParcela.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`;
-        const saldo = valorSaldoFinal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
-
-        return `Entrada: ${entrada} • ${parcelas} • Saldo: ${saldo} (30 dias antes do evento)`;
-      } else {
-        // Em modo automático, usar formatação padrão
-        return formatarResumoFinanceiro(indaiaCalculation);
-      }
+      return formatarResumoFinanceiro(indaiaCalculation);
     }
 
     if (isSemJuros1mais4 && semJuros1mais4Calculation) {
@@ -673,27 +533,10 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
       }
     } else if (field === 'valorEntrada') {
       const num = value === '' ? 0 : Number(value);
-
-      // Ativar flag de digitação e atualizar buffer
-      if (isPagamentoIndaia && dataEvento) {
-        setIsTypingEntrada(true);
-        setEntradaBuffer(value);
-      }
-
       newState = { ...state, valorEntrada: num };
       onValorEntradaChange(num);
-
-      // Recalcular se estiver em modo manual (sem validação imediata)
-      if (isPagamentoIndaia && state.modoManual) {
-        newState = recalcularPagamentoManual(newState, 'entrada');
-      }
     } else if (field === 'qtdMeses') {
       newState = { ...state, [field]: value };
-
-      // Recalcular se estiver em modo manual
-      if (isPagamentoIndaia && state.modoManual) {
-        newState = recalcularPagamentoManual(newState, 'parcelas');
-      }
     } else if (field === 'juros') {
       newState = { ...state, [field]: value };
 
@@ -701,42 +544,6 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
     } else if (field === 'valorSaldoFinal') {
       const num = value === '' ? 0 : Number(value);
       newState = { ...state, valorSaldoFinal: num };
-
-      // Recalcular se estiver em modo manual
-      if (isPagamentoIndaia && state.modoManual) {
-        newState = recalcularPagamentoManual(newState, 'saldo');
-      }
-    } else if (field === 'modoManual') {
-      // Toggle entre modo automático e manual
-      if (value && isPagamentoIndaia && indaiaCalculation) {
-        // Entrar em modo manual - manter valores atuais como base
-        newState = {
-          ...state,
-          modoManual: true,
-          // Preservar valores atuais para edição
-        };
-      } else {
-        // Voltar para modo automático - recalcular tudo
-        if (isPagamentoIndaia && dataEvento && totalProposta > 0) {
-          try {
-            const calculation = calcularPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
-            newState = {
-              ...state,
-              modoManual: false,
-              valorEntrada: calculation.valorEntrada,
-              qtdMeses: calculation.quantidadeParcelas,
-              valorTotalComJuros: calculation.valorTotalComJuros,
-              valorSaldoFinal: calculation.valorSaldoFinal,
-            };
-            onValorEntradaChange(calculation.valorEntrada);
-          } catch (error) {
-            console.error('Erro ao recalcular:', error);
-            newState = { ...state, modoManual: false };
-          }
-        } else {
-          newState = { ...state, modoManual: false };
-        }
-      }
     } else if (field === 'modeloPagamento') {
       // Reset de campos quando mudar o modelo
       newState = {

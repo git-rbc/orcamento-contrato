@@ -230,7 +230,6 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
   const [totalProposta, setTotalProposta] = useState(0);
   const [totalBruto, setTotalBruto] = useState(0); // Total sem descontar entrada
   const [valorDesconto, setValorDesconto] = useState(0);
-  const [isCalculatingPayment, setIsCalculatingPayment] = useState(false);
   
   // Estado para condições de pagamento
   const [condicoesPagamento, setCondicoesPagamento] = useState({
@@ -1184,7 +1183,6 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
               valorEntrada={valorEntrada}
               clienteId={clienteId}
               onDescontoChange={handleDescontoChange}
-              isCalculating={isCalculatingPayment}
               itensDisponiveis={[
                 { categoria: 'Alimentação', itens: alimentacaoItens },
                 { categoria: 'Bebidas', itens: bebidasItens },
@@ -1201,7 +1199,6 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
               totalProposta={totalProposta - valorDesconto}
               onValorEntradaChange={setValorEntrada}
               onCondicoesPagamentoChange={setCondicoesPagamento}
-              onIsCalculatingChange={setIsCalculatingPayment}
               initialValues={condicoesPagamento}
               dataEvento={dataEvento}
             />
