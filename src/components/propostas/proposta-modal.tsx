@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ComboboxSearch } from '@/components/ui/combobox-search';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PropostaAlimentacao } from '@/components/propostas/proposta-alimentacao';
 import { PropostaBebidas } from '@/components/propostas/proposta-bebidas';
 import { PropostaServicos } from '@/components/propostas/proposta-servicos';
@@ -228,7 +228,7 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
   }]);
   const [valorEntrada, setValorEntrada] = useState(0);
   const [totalProposta, setTotalProposta] = useState(0);
-  const [totalBruto, setTotalBruto] = useState(0); // Total sem descontar entrada
+  const [totalBruto, setTotalBruto] = useState(0); // Total antes de descontos e entrada
   const [valorDesconto, setValorDesconto] = useState(0);
   
   // Estado para condições de pagamento
@@ -658,33 +658,31 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
 
 
   useEffect(() => {
-    const calculateSubtotal = (items: LinhaItem[]) => 
-      items.reduce((acc, item) => {
-        return acc + calcularTotalComSubprodutos(item);
-      }, 0);
+    const calculateSubtotal = (items: LinhaItem[]) =>
+      items.reduce((acc, item) => acc + calcularTotalComSubprodutos(item), 0);
 
     const totalAlimentacao = calculateSubtotal(alimentacaoItens);
     const totalBebidas = calculateSubtotal(bebidasItens);
     const totalServicos = calculateSubtotal(servicosItens);
     const totalItensExtras = calculateSubtotal(itensExtras);
-    
+
     const subTotal = totalAlimentacao + totalBebidas + totalServicos + totalItensExtras;
-    
-    // Atualizar total bruto (sem descontar entrada)
     setTotalBruto(subTotal);
-    
-    // A entrada é um adiantamento (sinal) que deve ser subtraído do total
-    // Validar que a entrada não excede o subtotal
-    const entradaValidada = Math.min(valorEntrada, subTotal);
-    const totalFinal = Math.max(0, subTotal - entradaValidada);
-    
-    // Total da proposta é o valor líquido (após descontar entrada)
+
+    const totalComDesconto = Math.max(0, subTotal - valorDesconto);
+    const entradaValidada = Math.min(valorEntrada, totalComDesconto);
+    const totalFinal = Math.max(0, totalComDesconto - entradaValidada);
+
     setTotalProposta(totalFinal);
-  }, [alimentacaoItens, bebidasItens, servicosItens, itensExtras, valorEntrada]);
+  }, [alimentacaoItens, bebidasItens, servicosItens, itensExtras, valorEntrada, valorDesconto]);
 
   const handleDescontoChange = (desconto: number) => {
     setValorDesconto(desconto);
   };
+
+  const totalParaPagamento = useMemo(() => {
+    return Math.max(0, totalBruto - valorDesconto);
+  }, [totalBruto, valorDesconto]);
 
   const handleItemCupomChange = (itemId: string, cupom: any) => {
     // Função helper para atualizar item em uma lista (incluindo subprodutos)
@@ -800,6 +798,22 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
     }
   };
 
+  // Função auxiliar para atualizar quantidade de produtos (exceto serviços)
+  const atualizarQuantidadeProdutos = (items: LinhaItem[], quantidade: number): LinhaItem[] => {
+    return items.map(item => {
+      // Atualizar apenas produtos, não serviços
+      const itemAtualizado = item.tipoItem === 'produto' 
+        ? { ...item, quantidade } 
+        : item;
+      
+      // Atualizar subprodutos recursivamente se existirem
+      if (itemAtualizado.subprodutos && itemAtualizado.subprodutos.length > 0) {
+        itemAtualizado.subprodutos = atualizarQuantidadeProdutos(itemAtualizado.subprodutos, quantidade);
+      }
+      
+      return itemAtualizado;
+    });
+  };
   const handleNumPessoasChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value === '') {
@@ -808,12 +822,23 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
     }
 
     const numericValue = parseInt(value, 10);
+    let finalValue = numericValue;
+
     if (capacidadeMaxima !== null && numericValue > capacidadeMaxima) {
-      setNumPessoas(capacidadeMaxima);
-    } else {
-      setNumPessoas(numericValue);
+      finalValue = capacidadeMaxima;
     }
-  };
+
+    setNumPessoas(finalValue);
+
+    // Sincronizar quantidades dos produtos com o número de pessoas
+    // Atualizar apenas se há um valor válido
+    if (finalValue > 0) {
+      setAlimentacaoItens(prev => atualizarQuantidadeProdutos(prev, finalValue));
+      setBebidasItens(prev => atualizarQuantidadeProdutos(prev, finalValue));
+      setItensExtras(prev => atualizarQuantidadeProdutos(prev, finalValue));
+      // Nota: servicosItens NÃO é atualizado pois contém serviços, não produtos
+    }
+  };;
 
   const handleClienteSelect = (item: SearchItem | null) => {
     setClienteId(item?.id || '');
@@ -1196,7 +1221,7 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
           {/* Condições de Pagamento */}
           <div className="px-6 pb-6">
             <PropostaCondicoesPagamento
-              totalProposta={totalProposta - valorDesconto}
+              totalProposta={totalParaPagamento}
               onValorEntradaChange={setValorEntrada}
               onCondicoesPagamentoChange={setCondicoesPagamento}
               initialValues={condicoesPagamento}

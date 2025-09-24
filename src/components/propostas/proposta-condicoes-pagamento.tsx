@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -50,6 +50,7 @@ export interface CondicoesPagamentoState {
   valorTotalComJuros?: number;
   valorSaldoFinal?: number;
   calculoAutomatico?: boolean;
+  modoManual?: boolean;
 }
 
 interface Props {
@@ -59,6 +60,36 @@ interface Props {
   initialValues?: Partial<CondicoesPagamentoState>;
   dataEvento?: Date; // Data do evento para cálculos do Pagamento Indaiá
 }
+
+function shallowEqualObjects<T extends Record<string, unknown>>(a: T | null | undefined, b: T | null | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+  if (keysA.length !== keysB.length) return false;
+
+  for (const key of keysA) {
+    if ((a as Record<string, unknown>)[key] !== (b as Record<string, unknown>)[key]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+const arraysEqual = (a: string[], b: string[]): boolean => {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) {
+      return false;
+    }
+  }
+  return true;
+};
+
+const areCondicoesEqual = (a: CondicoesPagamentoState, b: CondicoesPagamentoState) => shallowEqualObjects(a as unknown as Record<string, unknown>, b as unknown as Record<string, unknown>);
 
 export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange, onCondicoesPagamentoChange, initialValues, dataEvento }: Props) {
   const modeloOptions = [
@@ -88,6 +119,7 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
     valorTotalComJuros: initialValues?.valorTotalComJuros || 0,
     valorSaldoFinal: initialValues?.valorSaldoFinal || 0,
     calculoAutomatico: initialValues?.calculoAutomatico || false,
+    modoManual: initialValues?.modoManual || false
   });
 
   const [indaiaCalculation, setIndaiaCalculation] = useState<any>(null);
@@ -97,6 +129,30 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
   const [condicaoEspecialConsultorCalculation, setCondicaoEspecialConsultorCalculation] = useState<CondicaoEspecialConsultorCalculation | null>(null);
   const [pagamento5050Calculation, setPagamento5050Calculation] = useState<Pagamento5050Calculation | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [activeCalculations, setActiveCalculations] = useState(0);
+  const isCalculating = activeCalculations > 0;
+
+  const beginCalculation = useCallback(() => {
+    setActiveCalculations(prev => prev + 1);
+  }, [setActiveCalculations]);
+
+  const endCalculation = useCallback(() => {
+    setActiveCalculations(prev => (prev > 0 ? prev - 1 : 0));
+  }, [setActiveCalculations]);
+
+  const updateState = useCallback((compute: (prev: CondicoesPagamentoState) => CondicoesPagamentoState) => {
+    setState(prev => {
+      const next = compute(prev);
+      return areCondicoesEqual(prev, next) ? prev : next;
+    });
+  }, [setState]);
+
+  const setValidationErrorsSafe = useCallback((errors: string[]) => {
+    setValidationErrors(prev => (arraysEqual(prev, errors) ? prev : errors));
+  }, [setValidationErrors]);
+
+  const lastEmittedStateRef = useRef(state);
+  const lastValorEntradaRef = useRef(state.valorEntrada);
 
   const formaPgtoOptions = ['PIX','Cartão de Crédito (Máquina)','Cartão de Crédito (Vindi)','Boleto (Vindi)','Dinheiro','TED'];
   const statusPgtoOptions = ['Realizado durante a reunião','Será realizado com o Pós Vendas'];
@@ -109,6 +165,27 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
   const isAVistaParcialCartao = state.modeloPagamento === 'À vista Parcial (Cartão de Crédito)';
   const isCondicaoEspecialConsultor = state.modeloPagamento === 'Condição Especial do Consultor';
   const is5050 = state.modeloPagamento === '50/50';
+
+  const valorMinimoOriginal = useMemo(() => {
+    if (!isPagamentoIndaia || !dataEvento) {
+      return 0;
+    }
+    return getValorMinimoEntrada(totalProposta, dataEvento);
+  }, [isPagamentoIndaia, totalProposta, dataEvento]);
+
+  useEffect(() => {
+    if (onCondicoesPagamentoChange && !areCondicoesEqual(lastEmittedStateRef.current, state)) {
+      lastEmittedStateRef.current = state;
+      onCondicoesPagamentoChange(state);
+    }
+  }, [state, onCondicoesPagamentoChange]);
+
+  useEffect(() => {
+    if (state.valorEntrada !== lastValorEntradaRef.current) {
+      lastValorEntradaRef.current = state.valorEntrada;
+      onValorEntradaChange(state.valorEntrada);
+    }
+  }, [state.valorEntrada, onValorEntradaChange]);
 
   // Funções específicas para controle de bloqueio de campos
   const isFieldAlwaysLocked = (field: string) => {
@@ -164,140 +241,137 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
   // Recalcular valores quando Pagamento Indaiá for selecionado
   useEffect(() => {
     if (isPagamentoIndaia && dataEvento && totalProposta > 0) {
+      beginCalculation();
       try {
         const errors = validarPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
-        setValidationErrors(errors);
+        setValidationErrorsSafe(errors);
 
         if (errors.length === 0) {
           const calculation = calcularPagamentoIndaia({ valorTotal: totalProposta, dataEvento });
-          setIndaiaCalculation(calculation);
 
-          // Atualizar estado automaticamente
-          const newState = {
-            ...state,
+          setIndaiaCalculation(prev => (
+            prev && shallowEqualObjects(prev as unknown as Record<string, unknown>, calculation as unknown as Record<string, unknown>) ? prev : calculation
+          ));
+
+          updateState(prev => ({
+            ...prev,
             calculoAutomatico: true,
-            entrada: 'Sim' as const,
-            reajuste: 'Sim' as const,
+            entrada: 'Sim',
+            reajuste: 'Sim',
             juros: calculation.percentualJuros,
             valorEntrada: calculation.valorEntrada,
             qtdMeses: calculation.quantidadeParcelas,
             valorSaldoFinal: calculation.valorSaldoFinal,
             valorTotalComJuros: calculation.valorTotalComJuros,
-            formaSaldoFinal: 'A ser pago até 30 dias antes do evento',
-          };
-
-          setState(newState);
-          onValorEntradaChange(calculation.valorEntrada);
-          onCondicoesPagamentoChange?.(newState);
+            formaSaldoFinal: 'A ser pago até 30 dias antes do evento'
+          }));
         }
       } catch (error) {
         console.error('Erro ao calcular Pagamento Indaiá:', error);
-        setValidationErrors(['Erro no cálculo do Pagamento Indaiá']);
+        setValidationErrorsSafe(['Erro no cálculo do Pagamento Indaiá']);
+      } finally {
+        endCalculation();
       }
     } else if (!isPagamentoIndaia) {
-      // Reset quando sair do Pagamento Indaiá
-      setIndaiaCalculation(null);
-      setValidationErrors([]);
+      setIndaiaCalculation(prev => (prev === null ? prev : null));
+      setValidationErrorsSafe([]);
       if (state.calculoAutomatico) {
-        const newState = {
-          ...state,
+        updateState(prev => ({
+          ...prev,
           calculoAutomatico: false,
           juros: 0,
-          reajuste: 'Não' as const
-        };
-        setState(newState);
-        onCondicoesPagamentoChange?.(newState);
+          reajuste: 'Não'
+        }));
       }
     }
-  }, [isPagamentoIndaia, totalProposta, dataEvento]);
+  }, [isPagamentoIndaia, totalProposta, dataEvento, beginCalculation, endCalculation, setValidationErrorsSafe, updateState, state.calculoAutomatico]);
 
   // Recalcular valores quando Sem Juros (1+4) for selecionado
   useEffect(() => {
     if (isSemJuros1mais4 && totalProposta > 0) {
+      beginCalculation();
       try {
         const errors = validarPagamentoSemJuros1mais4(totalProposta);
-        setValidationErrors(errors);
+        setValidationErrorsSafe(errors);
 
         if (errors.length === 0) {
           const calculation = calcularPagamentoSemJuros1mais4(totalProposta);
-          setSemJuros1mais4Calculation(calculation);
+          setSemJuros1mais4Calculation(prev => (
+            prev && shallowEqualObjects(prev as unknown as Record<string, unknown>, calculation as unknown as Record<string, unknown>) ? prev : calculation
+          ));
 
-          // Atualizar estado automaticamente
-          const newState = {
-            ...state,
+          updateState(prev => ({
+            ...prev,
             calculoAutomatico: true,
-            entrada: 'Sim' as const,
-            reajuste: 'Não' as const,
+            entrada: 'Sim',
+            reajuste: 'Não',
             juros: 0,
             valorEntrada: calculation.valorEntrada,
             qtdMeses: calculation.quantidadeParcelas,
             valorSaldoFinal: 0,
             formaSaldoFinal: '',
-            valorTotalComJuros: calculation.valorTotal,
-          };
-
-          setState(newState);
-          onValorEntradaChange(calculation.valorEntrada);
-          onCondicoesPagamentoChange?.(newState);
+            valorTotalComJuros: calculation.valorTotal
+          }));
         }
       } catch (error) {
         console.error('Erro ao calcular Pagamento Sem Juros (1+4):', error);
-        setValidationErrors(['Erro no cálculo do Pagamento Sem Juros (1+4)']);
+        setValidationErrorsSafe(['Erro no cálculo do Pagamento Sem Juros (1+4)']);
+      } finally {
+        endCalculation();
       }
     } else if (!isSemJuros1mais4) {
-      // Reset quando sair do Sem Juros (1+4)
-      setSemJuros1mais4Calculation(null);
+      setSemJuros1mais4Calculation(prev => (prev === null ? prev : null));
       if (!isPagamentoIndaia) {
-        setValidationErrors([]);
+        setValidationErrorsSafe([]);
       }
     }
-  }, [isSemJuros1mais4, totalProposta]);
+  }, [isSemJuros1mais4, totalProposta, beginCalculation, endCalculation, setValidationErrorsSafe, updateState, isPagamentoIndaia]);
 
   // Recalcular valores quando À vista (Dinheiro) for selecionado
   useEffect(() => {
     if (isAVistaDinheiro && totalProposta > 0) {
+      beginCalculation();
       try {
         const errors = validarPagamentoAVistaDinheiro(totalProposta);
-        setValidationErrors(errors);
+        setValidationErrorsSafe(errors);
 
         if (errors.length === 0) {
           const calculation = calcularPagamentoAVistaDinheiro(totalProposta);
-          setAVistaDinheiroCalculation(calculation);
+          setAVistaDinheiroCalculation(prev => (
+            prev && shallowEqualObjects(prev as unknown as Record<string, unknown>, calculation as unknown as Record<string, unknown>) ? prev : calculation
+          ));
 
-          // Atualizar estado automaticamente
-          const newState = {
-            ...state,
+          updateState(prev => ({
+            ...prev,
             calculoAutomatico: true,
-            entrada: 'Sim' as const,
-            reajuste: 'Não' as const,
+            entrada: 'Sim',
+            reajuste: 'Não',
             juros: 0,
             valorEntrada: calculation.valorEntrada,
             qtdMeses: 1,
             valorSaldoFinal: calculation.valorSaldoFinal,
             formaSaldoFinal: 'Boleto',
-            valorTotalComJuros: calculation.valorTotalComDesconto,
-          };
-
-          setState(newState);
-          onValorEntradaChange(calculation.valorEntrada);
-          onCondicoesPagamentoChange?.(newState);
+            valorTotalComJuros: calculation.valorTotalComDesconto
+          }));
         }
       } catch (error) {
         console.error('Erro ao calcular Pagamento À vista (Dinheiro):', error);
-        setValidationErrors(['Erro no cálculo do Pagamento À vista (Dinheiro)']);
+        setValidationErrorsSafe(['Erro no cálculo do Pagamento À vista (Dinheiro)']);
+      } finally {
+        endCalculation();
       }
     } else if (!isAVistaDinheiro) {
-      // Reset quando sair do À vista (Dinheiro)
-      setAVistaDinheiroCalculation(null);
+      setAVistaDinheiroCalculation(prev => (prev === null ? prev : null));
       if (!isPagamentoIndaia && !isSemJuros1mais4) {
-        setValidationErrors([]);
+        setValidationErrorsSafe([]);
       }
     }
-  }, [isAVistaDinheiro, totalProposta]);
+  }, [isAVistaDinheiro, totalProposta, beginCalculation, endCalculation, setValidationErrorsSafe, updateState, isPagamentoIndaia, isSemJuros1mais4]);
 
   // Recalcular valores quando À vista Parcial (Cartão de Crédito) for selecionado
   useEffect(() => {
     if (isAVistaParcialCartao && totalProposta > 0) {
+      beginCalculation();
       try {
         // Usar valores padrão se não especificados
         const quantidadeParcelas = state.qtdMeses || 1;
@@ -308,7 +382,7 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
           quantidadeParcelas,
           taxaJuros
         });
-        setValidationErrors(errors);
+        setValidationErrorsSafe(errors);
 
         if (errors.length === 0) {
           const calculation = calcularPagamentoAVistaParcialCartao({
@@ -316,47 +390,45 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
             quantidadeParcelas,
             taxaJuros
           });
-          setAVistaParcialCartaoCalculation(calculation);
+          setAVistaParcialCartaoCalculation(prev => (
+            prev && shallowEqualObjects(prev as unknown as Record<string, unknown>, calculation as unknown as Record<string, unknown>) ? prev : calculation
+          ));
 
-          // Calcular data sugerida para pagamento (30 dias a partir de hoje)
           const dataPagamento = new Date();
           dataPagamento.setDate(dataPagamento.getDate() + 30);
 
-          // Atualizar estado automaticamente
-          const newState = {
-            ...state,
+          updateState(prev => ({
+            ...prev,
             calculoAutomatico: true,
-            entrada: 'Sim' as const,
-            reajuste: 'Sim' as const,
+            entrada: 'Sim',
+            reajuste: 'Sim',
             juros: calculation.percentualJuros,
             valorEntrada: calculation.valorEntrada,
             qtdMeses: calculation.quantidadeParcelasCartao,
             valorSaldoFinal: 0,
             formaSaldoFinal: 'Cartão de Crédito (Vindi)',
             valorTotalComJuros: calculation.valorTotalComJuros,
-            diaVencimento: dataPagamento.getDate(),
-          };
-
-          setState(newState);
-          onValorEntradaChange(calculation.valorEntrada);
-          onCondicoesPagamentoChange?.(newState);
+            diaVencimento: dataPagamento.getDate()
+          }));
         }
       } catch (error) {
         console.error('Erro ao calcular Pagamento À vista Parcial (Cartão de Crédito):', error);
-        setValidationErrors(['Erro no cálculo do Pagamento À vista Parcial (Cartão de Crédito)']);
+        setValidationErrorsSafe(['Erro no cálculo do Pagamento À vista Parcial (Cartão de Crédito)']);
+      } finally {
+        endCalculation();
       }
     } else if (!isAVistaParcialCartao) {
-      // Reset quando sair do À vista Parcial (Cartão de Crédito)
-      setAVistaParcialCartaoCalculation(null);
+      setAVistaParcialCartaoCalculation(prev => (prev === null ? prev : null));
       if (!isPagamentoIndaia && !isSemJuros1mais4 && !isAVistaDinheiro) {
-        setValidationErrors([]);
+        setValidationErrorsSafe([]);
       }
     }
-  }, [isAVistaParcialCartao, totalProposta, state.qtdMeses, state.juros]);
+  }, [isAVistaParcialCartao, totalProposta, state.qtdMeses, state.juros, beginCalculation, endCalculation, setValidationErrorsSafe, updateState, isPagamentoIndaia, isSemJuros1mais4, isAVistaDinheiro]);
 
   // Recalcular valores quando Condição Especial do Consultor for selecionado
   useEffect(() => {
     if (isCondicaoEspecialConsultor && totalProposta > 0) {
+      beginCalculation();
       try {
         // Usar valores padrão se não especificados
         const valorEntrada = state.valorEntrada || 1000; // Mínimo R$ 1.000
@@ -375,7 +447,7 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
           taxaJuros: percentualJuros,
           dataEvento
         });
-        setValidationErrors(errors);
+        setValidationErrorsSafe(errors);
 
         if (errors.length === 0) {
           const calculation = calcularCondicaoEspecialConsultor({
@@ -387,41 +459,40 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
             taxaJuros: percentualJuros,
             dataEvento
           });
-          setCondicaoEspecialConsultorCalculation(calculation);
+          setCondicaoEspecialConsultorCalculation(prev => (
+            prev && shallowEqualObjects(prev as unknown as Record<string, unknown>, calculation as unknown as Record<string, unknown>) ? prev : calculation
+          ));
 
-          // Atualizar estado automaticamente
-          const newState = {
-            ...state,
+          updateState(prev => ({
+            ...prev,
             calculoAutomatico: true,
-            entrada: 'Sim' as const,
-            reajuste: 'Sim' as const,
+            entrada: 'Sim',
+            reajuste: 'Sim',
             juros: calculation.percentualJuros,
             valorEntrada: calculation.valorEntrada,
             qtdMeses: calculation.parcelasIntermediarias,
             valorSaldoFinal: calculation.valorSaldoFinal,
-            valorTotalComJuros: calculation.valorTotalComJuros,
-          };
-
-          setState(newState);
-          onValorEntradaChange(calculation.valorEntrada);
-          onCondicoesPagamentoChange?.(newState);
+            valorTotalComJuros: calculation.valorTotalComJuros
+          }));
         }
       } catch (error) {
         console.error('Erro ao calcular Condição Especial do Consultor:', error);
-        setValidationErrors(['Erro no cálculo da Condição Especial do Consultor']);
+        setValidationErrorsSafe(['Erro no cálculo da Condição Especial do Consultor']);
+      } finally {
+        endCalculation();
       }
     } else if (!isCondicaoEspecialConsultor) {
-      // Reset quando sair da Condição Especial do Consultor
-      setCondicaoEspecialConsultorCalculation(null);
+      setCondicaoEspecialConsultorCalculation(prev => (prev === null ? prev : null));
       if (!isPagamentoIndaia && !isSemJuros1mais4 && !isAVistaDinheiro && !isAVistaParcialCartao) {
-        setValidationErrors([]);
+        setValidationErrorsSafe([]);
       }
     }
-  }, [isCondicaoEspecialConsultor, totalProposta, state.valorEntrada, state.qtdMeses, state.juros]);
+  }, [isCondicaoEspecialConsultor, totalProposta, state.valorEntrada, state.qtdMeses, state.juros, beginCalculation, endCalculation, setValidationErrorsSafe, updateState, isPagamentoIndaia, isSemJuros1mais4, isAVistaDinheiro, isAVistaParcialCartao]);
 
   // Recalcular valores quando 50/50 for selecionado
   useEffect(() => {
     if (is5050 && totalProposta > 0 && dataEvento) {
+      beginCalculation();
       try {
         // Usar data de hoje como data do contrato
         const dataContrato = new Date();
@@ -433,7 +504,7 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
           dataEvento,
           taxaJuros
         });
-        setValidationErrors(errors);
+        setValidationErrorsSafe(errors);
 
         if (errors.length === 0) {
           const calculation = calcularPagamento5050({
@@ -442,44 +513,50 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
             dataEvento,
             taxaJuros
           });
-          setPagamento5050Calculation(calculation);
+          setPagamento5050Calculation(prev => (
+            prev && shallowEqualObjects(prev as unknown as Record<string, unknown>, calculation as unknown as Record<string, unknown>) ? prev : calculation
+          ));
 
-          // Atualizar estado automaticamente
-          const newState = {
-            ...state,
+          updateState(prev => ({
+            ...prev,
             calculoAutomatico: true,
-            entrada: 'Sim' as const,
-            reajuste: 'Sim' as const,
+            entrada: 'Sim',
+            reajuste: 'Sim',
             juros: calculation.percentualJuros,
             valorEntrada: calculation.valorEntrada,
-            qtdMeses: 1, // Apenas um boleto intermediário
+            qtdMeses: 1,
             valorSaldoFinal: calculation.valorSaldoFinal,
             valorTotalComJuros: calculation.valorTotalComJuros,
-            formaSaldoFinal: 'Boleto (Vindi)',
-          };
-
-          setState(newState);
-          onValorEntradaChange(calculation.valorEntrada);
-          onCondicoesPagamentoChange?.(newState);
+            formaSaldoFinal: 'Boleto (Vindi)'
+          }));
         }
       } catch (error) {
         console.error('Erro ao calcular Pagamento 50/50:', error);
-        setValidationErrors(['Erro no cálculo do Pagamento 50/50']);
+        setValidationErrorsSafe(['Erro no cálculo do Pagamento 50/50']);
+      } finally {
+        endCalculation();
       }
     } else if (!is5050) {
-      // Reset quando sair do 50/50
-      setPagamento5050Calculation(null);
+      setPagamento5050Calculation(prev => (prev === null ? prev : null));
       if (!isPagamentoIndaia && !isSemJuros1mais4 && !isAVistaDinheiro && !isAVistaParcialCartao && !isCondicaoEspecialConsultor) {
-        setValidationErrors([]);
+        setValidationErrorsSafe([]);
       }
     }
-  }, [is5050, totalProposta, dataEvento, state.juros]);
+  }, [is5050, totalProposta, dataEvento, state.juros, beginCalculation, endCalculation, setValidationErrorsSafe, updateState, isPagamentoIndaia, isSemJuros1mais4, isAVistaDinheiro, isAVistaParcialCartao, isCondicaoEspecialConsultor]);
 
-  const valorRestante = isPagamentoIndaia && indaiaCalculation
-    ? indaiaCalculation.valorTotalComJuros - state.valorEntrada - (state.valorSaldoFinal || 0)
-    : Math.max(totalProposta - state.valorEntrada, 0);
+  const valorRestante = useMemo(() => {
+    if (isPagamentoIndaia && indaiaCalculation) {
+      return indaiaCalculation.valorTotalComJuros - state.valorEntrada - (state.valorSaldoFinal || 0);
+    }
+    return Math.max(totalProposta - state.valorEntrada, 0);
+  }, [isPagamentoIndaia, indaiaCalculation, state.valorEntrada, state.valorSaldoFinal, totalProposta]);
 
-  const valorParcela = state.qtdMeses > 0 ? Math.round((valorRestante / state.qtdMeses) * 100) / 100 : 0;
+  const valorParcela = useMemo(() => {
+    if (state.qtdMeses > 0 && Number.isFinite(valorRestante)) {
+      return Math.round((valorRestante / state.qtdMeses) * 100) / 100;
+    }
+    return 0;
+  }, [valorRestante, state.qtdMeses]);
 
   const resumoSimulador = () => {
     if (isPagamentoIndaia && indaiaCalculation) {
@@ -518,46 +595,43 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
   };
 
   const handleChange = (field: keyof CondicoesPagamentoState, value: any) => {
-    // Evitar mudanças quando o campo está bloqueado
     if (isFieldLocked(field)) {
       return;
     }
 
-    let newState = { ...state };
+    updateState(prev => {
+      let next = { ...prev };
 
-    if (field === 'reajuste') {
-      if (value === 'Não') {
-        newState = { ...state, reajuste: value, juros: 0 };
+      if (field === 'reajuste') {
+        if (value === 'Não') {
+          next = { ...prev, reajuste: value, juros: 0 };
+        } else {
+          next = { ...prev, [field]: value };
+        }
+      } else if (field === 'valorEntrada') {
+        const num = value === '' ? 0 : Number(value);
+        next = { ...prev, valorEntrada: Number.isFinite(num) ? num : 0 };
+      } else if (field === 'qtdMeses') {
+        next = { ...prev, [field]: Number(value) };
+      } else if (field === 'juros') {
+        next = { ...prev, [field]: Number(value) };
+      } else if (field === 'valorSaldoFinal') {
+        const num = value === '' ? 0 : Number(value);
+        next = { ...prev, valorSaldoFinal: Number.isFinite(num) ? num : 0 };
+      } else if (field === 'modeloPagamento') {
+        const calculoAutomatico = value === 'Pagamento Indaiá' || value === 'Sem Juros (1+4)' || value === 'À vista (Dinheiro)' || value === 'À vista Parcial (Cartão de Crédito)' || value === 'Condição Especial do Consultor' || value === '50/50';
+        next = {
+          ...prev,
+          [field]: value,
+          calculoAutomatico,
+          modoManual: false
+        };
       } else {
-        newState = { ...state, [field]: value };
+        next = { ...prev, [field]: value };
       }
-    } else if (field === 'valorEntrada') {
-      const num = value === '' ? 0 : Number(value);
-      newState = { ...state, valorEntrada: num };
-      onValorEntradaChange(num);
-    } else if (field === 'qtdMeses') {
-      newState = { ...state, [field]: value };
-    } else if (field === 'juros') {
-      newState = { ...state, [field]: value };
 
-      // Para o modelo À vista Parcial (Cartão de Crédito), recalcular automaticamente quando os juros mudarem
-    } else if (field === 'valorSaldoFinal') {
-      const num = value === '' ? 0 : Number(value);
-      newState = { ...state, valorSaldoFinal: num };
-    } else if (field === 'modeloPagamento') {
-      // Reset de campos quando mudar o modelo
-      newState = {
-        ...state,
-        [field]: value,
-        calculoAutomatico: value === 'Pagamento Indaiá' || value === 'Sem Juros (1+4)' || value === 'À vista (Dinheiro)' || value === 'À vista Parcial (Cartão de Crédito)' || value === 'Condição Especial do Consultor' || value === '50/50',
-        modoManual: false // Reset modo manual
-      };
-    } else {
-      newState = { ...state, [field]: value };
-    }
-
-    setState(newState);
-    onCondicoesPagamentoChange?.(newState);
+      return next;
+    });
   };
 
   return (
@@ -744,7 +818,7 @@ export function PropostaCondicoesPagamento({ totalProposta, onValorEntradaChange
         </div>
         <div className="col-span-1 space-y-1">
           <label className="text-sm font-medium flex items-center gap-1">
-            Reajuste
+            Juros aplicado
             {isFieldLocked('reajuste') && <Lock className="h-3 w-3 text-muted-foreground" />}
           </label>
           <Select value={state.reajuste} onValueChange={val=>handleChange('reajuste', val as any)} disabled={isFieldLocked('reajuste')}>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LinhaItem } from '@/components/propostas/proposta-modal';
 import { Produto } from '@/types/database';
 
@@ -33,6 +33,26 @@ export function useCalculoServicos({
 }: CalculoServicosParams) {
   const [calculandoServicos, setCalculandoServicos] = useState<Set<string>>(new Set());
   const [errosCalculo, setErrosCalculo] = useState<Map<string, string>>(new Map());
+  const lastCalculoSignatureRef = useRef<string>('');
+  const appReadyStatusRef = useRef<{ resolved: boolean; promise: Promise<boolean> | null }>({ resolved: false, promise: null });
+
+  const ensureAppReady = async () => {
+    if (appReadyStatusRef.current.resolved) {
+      return true;
+    }
+
+    if (!appReadyStatusRef.current.promise) {
+      appReadyStatusRef.current.promise = waitForAppReady().then((result) => {
+        if (result) {
+          appReadyStatusRef.current.resolved = true;
+        }
+        appReadyStatusRef.current.promise = null;
+        return result;
+      });
+    }
+
+    return appReadyStatusRef.current.promise;
+  };
 
   // Calcular diferença em meses entre duas datas
   const calcularMesesEntreDatas = (dataInicio: Date, dataFim: Date): number => {
@@ -165,20 +185,17 @@ export function useCalculoServicos({
   };
 
   // Calcular valor de um serviço específico com retry
-  const calcularServicoIndividual = async (servicoItem: LinhaItem, tentativas = 3): Promise<CalculoResult> => {
+  const calcularServicoIndividual = async (
+    servicoItem: LinhaItem,
+    valoresProdutos: { produtosCampoTaxa: number; produtosCampoReajuste: number },
+    tentativas = 3
+  ): Promise<CalculoResult> => {
     if (!servicoItem.servicoTemplateId || !servicoItem.calculoAutomatico) {
       return { valorCalculado: servicoItem.valorUnitario, parametrosUtilizados: {} };
     }
 
-    // Aguardar aplicação estar pronta antes da primeira tentativa
-    if (!(await waitForAppReady())) {
-      console.warn('Aplicação não está pronta após 5s, tentando mesmo assim...');
-    }
-
     for (let tentativa = 1; tentativa <= tentativas; tentativa++) {
       try {
-        const valoresProdutos = await calcularValoresProdutos();
-        
         const response = await fetch('/api/servicos-template/calcular', {
           method: 'POST',
           headers: {
@@ -242,8 +259,37 @@ export function useCalculoServicos({
     );
 
     if (servicosAutomaticos.length === 0) {
+      lastCalculoSignatureRef.current = '';
       return;
     }
+
+    const signaturePayload = {
+      espacoId: espacoId || null,
+      diaSemana: diaSemana || null,
+      numPessoas: numPessoas ?? null,
+      dataContratacao: dataContratacao ? dataContratacao.toISOString() : null,
+      dataRealizacao: dataRealizacao ? dataRealizacao.toISOString() : null,
+      servicos: servicosAutomaticos
+        .map(item => ({
+          id: item.id,
+          servicoTemplateId: item.servicoTemplateId,
+          quantidade: item.quantidade,
+          valorUnitario: item.valorUnitario,
+          tipoCalculo: item.tipoCalculo
+        }))
+        .sort((a, b) => a.id.localeCompare(b.id)),
+      alimentacao: alimentacaoItens.map(item => ({ id: item.id, produtoId: item.produtoId, quantidade: item.quantidade, valorUnitario: item.valorUnitario })),
+      bebidas: bebidasItens.map(item => ({ id: item.id, produtoId: item.produtoId, quantidade: item.quantidade, valorUnitario: item.valorUnitario })),
+      extras: itensExtras.map(item => ({ id: item.id, produtoId: item.produtoId, quantidade: item.quantidade, valorUnitario: item.valorUnitario }))
+    };
+
+    const signature = JSON.stringify(signaturePayload);
+    if (lastCalculoSignatureRef.current === signature) {
+      return;
+    }
+
+    await ensureAppReady();
+    const valoresProdutos = await calcularValoresProdutos();
 
     // Marcar serviços como sendo calculados
     const idsCalculando = new Set(servicosAutomaticos.map(s => s.id));
@@ -251,20 +297,27 @@ export function useCalculoServicos({
 
     const novosErros = new Map<string, string>();
     const servicosAtualizados = [...servicosItens];
+    let houveAlteracao = false;
 
     // Calcular cada serviço
     for (const servico of servicosAutomaticos) {
       try {
-        const resultado = await calcularServicoIndividual(servico);
-        
-        // Atualizar item na lista
+        const resultado = await calcularServicoIndividual(servico, valoresProdutos);
+
         const index = servicosAtualizados.findIndex(s => s.id === servico.id);
         if (index !== -1) {
-          servicosAtualizados[index] = {
-            ...servicosAtualizados[index],
-            valorUnitario: resultado.valorCalculado,
-            parametrosCalculo: resultado.parametrosUtilizados
-          };
+          const itemAtual = servicosAtualizados[index];
+          const mesmoValor = itemAtual.valorUnitario === resultado.valorCalculado;
+          const mesmosParametros = JSON.stringify(itemAtual.parametrosCalculo || {}) === JSON.stringify(resultado.parametrosUtilizados || {});
+
+          if (!mesmoValor || !mesmosParametros) {
+            servicosAtualizados[index] = {
+              ...itemAtual,
+              valorUnitario: resultado.valorCalculado,
+              parametrosCalculo: resultado.parametrosUtilizados
+            };
+            houveAlteracao = true;
+          }
         }
 
         if (resultado.erro) {
@@ -280,7 +333,15 @@ export function useCalculoServicos({
     // Atualizar estados
     setErrosCalculo(novosErros);
     setCalculandoServicos(new Set());
-    setServicosItens(servicosAtualizados);
+    if (houveAlteracao) {
+      setServicosItens(servicosAtualizados);
+    }
+
+    if (novosErros.size > 0) {
+      lastCalculoSignatureRef.current = '';
+    } else {
+      lastCalculoSignatureRef.current = signature;
+    }
   };
 
   // Verificar se há dados suficientes para cálculo

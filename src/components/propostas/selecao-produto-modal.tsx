@@ -15,9 +15,10 @@ interface SelecaoProdutoModalProps {
   onOpenChange: (open: boolean) => void;
   onSelect: (produto: Produto) => void;
   seguimentoFiltro?: 'alimentos' | 'bebidas' | 'decoracao' | 'itens_extra' | null;
+  decoracaoTipo?: 'pacotes' | 'itens' | null; // Novo campo para filtrar tipo de decoração
 }
 
-export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFiltro }: SelecaoProdutoModalProps) {
+export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFiltro, decoracaoTipo }: SelecaoProdutoModalProps) {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,18 +29,18 @@ export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFi
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchProdutos = useCallback(async (page = 1, search = '', limit = itemsPerPage, seguimento = seguimentoAtivo) => {
-    const cacheKey = `produtos_search_cache_${search}_${seguimento || 'todos'}_page_${page}_limit_${limit}`;
-    
-    // Desabilitar cache quando há seguimento específico para garantir dados corretos
-    let usarCache = !seguimento;
+    const cacheKey = `produtos_search_cache_${search}_${seguimento || 'todos'}_${decoracaoTipo || 'todos'}_page_${page}_limit_${limit}`;
+
+    // Desabilitar cache quando há seguimento específico ou tipo de decoração para garantir dados corretos
+    let usarCache = !seguimento && !decoracaoTipo;
     let cachedItem = null;
-    
+
     if (usarCache) {
       cachedItem = localStorage.getItem(cacheKey);
       if (cachedItem) {
         const { timestamp, data } = JSON.parse(cachedItem);
         const isCacheValid = (new Date().getTime() - timestamp) < 24 * 60 * 60 * 1000; // 24 hours
-        
+
         if (isCacheValid) {
           setProdutos(data.data);
           setTotalPages(data.totalPages);
@@ -49,7 +50,7 @@ export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFi
         }
       }
     }
-    
+
     try {
       setIsLoading(true);
       const params = new URLSearchParams({
@@ -63,6 +64,12 @@ export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFi
       if (seguimento) {
         params.append('seguimento', seguimento);
         console.log('🔍 Aplicando filtro de seguimento:', seguimento);
+      }
+
+      // Adicionar filtro específico para pacotes de decoração
+      if (seguimento === 'decoracao' && decoracaoTipo === 'pacotes') {
+        params.append('categoria', '92cfb39f-bedd-4098-9e66-de3f0c7befe2'); // ID da categoria "Decorações - Pacotes"
+        console.log('🎨 Aplicando filtro para pacotes decorativos');
       }
 
       const response = await fetch(`/api/produtos?${params}`);
@@ -89,7 +96,7 @@ export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFi
     } finally {
       setIsLoading(false);
     }
-  }, [itemsPerPage, seguimentoAtivo]);
+  }, [itemsPerPage, seguimentoAtivo, decoracaoTipo]);
   
   useEffect(() => {
     if (open) {
@@ -102,7 +109,7 @@ export function SelecaoProdutoModal({ open, onOpenChange, onSelect, seguimentoFi
         fetchProdutos(1, searchTerm, itemsPerPage, seguimentoAtivo);
       }
     }
-  }, [open, seguimentoFiltro, fetchProdutos, searchTerm, itemsPerPage, seguimentoAtivo]);
+  }, [open, seguimentoFiltro, decoracaoTipo, fetchProdutos, searchTerm, itemsPerPage, seguimentoAtivo]);
 
   const handleSeguimentoChange = (value: string) => {
     const novoSeguimento = value === 'todos' ? null : value;

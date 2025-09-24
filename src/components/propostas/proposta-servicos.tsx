@@ -39,17 +39,40 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
 
   // Buscar valores mínimos cadastrados nos serviços template
   const buscarValorMinimoCadastrado = useCallback(async (item: LinhaItem): Promise<number> => {
-    if (!item.servicoTemplateId || !espacoId) return 0;
+    if (!espacoId) return 0;
+
+    let servicoTemplateId = item.servicoTemplateId;
+    
+    // Se não há servicoTemplateId, tentar buscar pelo nome/descrição do item
+    if (!servicoTemplateId && item.descricao) {
+      try {
+        const searchResponse = await fetch('/api/servicos-template?' + new URLSearchParams({
+          nome: item.descricao.trim()
+        }));
+        
+        if (searchResponse.ok) {
+          const searchResult = await searchResponse.json();
+          if (searchResult.data && searchResult.data.length > 0) {
+            servicoTemplateId = searchResult.data[0].id;
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao buscar serviço template pelo nome:', error);
+      }
+    }
+
+    // Se ainda não tem servicoTemplateId, retornar 0
+    if (!servicoTemplateId) return 0;
 
     // Verificar se já temos o valor em cache
-    const cacheKey = `${item.servicoTemplateId}_${espacoId}_${diaSemana}`;
+    const cacheKey = `${servicoTemplateId}_${espacoId}_${diaSemana}`;
     if (valoresMinimosRef.current.has(cacheKey)) {
       return valoresMinimosRef.current.get(cacheKey)!;
     }
 
     try {
       const requestBody: any = {
-        servicoTemplateId: item.servicoTemplateId,
+        servicoTemplateId: servicoTemplateId,
         espacoId,
         diaSemana,
         numPessoas: typeof numPessoas === 'number' ? numPessoas : undefined
@@ -81,7 +104,7 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
   // Função para buscar valor mínimo de um item específico
   const obterValorMinimo = useCallback(async (itemId: string): Promise<number> => {
     const item = items.find(i => i.id === itemId);
-    if (!item || !isItemEditavel(item) || !item.calculoAutomatico) return 0;
+    if (!item || !isItemEditavel(item)) return 0;
 
     return await buscarValorMinimoCadastrado(item);
   }, [items, buscarValorMinimoCadastrado]);
@@ -202,16 +225,37 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
     if (!item || field !== 'valorUnitario' || !isItemEditavel(item)) return;
 
     const valorAtual = item.valorUnitario;
-    if (valorAtual > 0) {
-      const valorMinimo = await obterValorMinimo(id);
+    const valorMinimo = await obterValorMinimo(id);
 
-      if (valorAtual < valorMinimo && valorMinimo > 0) {
-        // Aplicar valor mínimo automaticamente
-        const updatedItems = items.map(i =>
-          i.id === id ? { ...i, [field]: valorMinimo } : i
-        );
-        setItems(updatedItems);
-      }
+    if (valorMinimo > 0 && valorAtual < valorMinimo) {
+      // Aplicar valor mínimo automaticamente
+      const updatedItems = items.map(i =>
+        i.id === id ? { ...i, [field]: valorMinimo } : i
+      );
+      setItems(updatedItems);
+
+      // Limpar o valor do input para forçar re-render com o novo valor
+      setInputValues(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(id);
+        return newMap;
+      });
+
+      // Mostrar mensagem de validação
+      setValidationMessages(prev => {
+        const newMap = new Map(prev);
+        newMap.set(id, `Valor mínimo: R$ ${valorMinimo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`);
+        return newMap;
+      });
+
+      // Remover mensagem após 3 segundos
+      setTimeout(() => {
+        setValidationMessages(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(id);
+          return newMap;
+        });
+      }, 3000);
     }
   }, [items, obterValorMinimo]);
 
@@ -395,6 +439,7 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
           onOpenChange={setIsModalOpen}
           onSelect={handleProductSelect}
           seguimentoFiltro={seguimentoFiltro}
+          decoracaoTipo={seguimentoFiltro === 'decoracao' ? 'pacotes' : null}
         />
       </div>
     </TooltipProvider>

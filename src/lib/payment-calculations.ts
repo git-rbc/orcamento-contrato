@@ -118,6 +118,25 @@ const MAX_PARCELAS_SALDO_FINAL_CONSULTOR = 18; // Até 18x no saldo final
 const TAXA_JUROS_CONSULTOR_PADRAO = 0.0129; // 1,29% ao mês padrão
 const MIN_PARCELAS_PARA_CONSULTOR = 5; // Mínimo de 5 parcelas para usar este modelo
 
+const MAX_MESES_PAGAMENTO_INDIA = 30; // Mantém limite já aplicado em calcularMesesAteEvento
+const MAX_COMPOUND_PERIODS = 600; // ~50 anos em meses, apenas para evitar overflow
+const MAX_COMPOUND_RATE = 1; // 100% ao mês para impedir bases negativas ou infinitas
+const MIN_COMPOUND_RATE = -0.99; // evita base zero ou negativa no log
+const MAX_CURRENCY_VALUE = Number.MAX_SAFE_INTEGER / 100; // limite seguro para arredondamento
+
+const clampNumber = (value: number, min: number, max: number): number => {
+  if (!Number.isFinite(value)) {
+    return min;
+  }
+  return Math.min(Math.max(value, min), max);
+};
+
+const roundCurrency = (value: number): number => {
+  const safeValue = clampNumber(value, -MAX_CURRENCY_VALUE, MAX_CURRENCY_VALUE);
+  const rounded = Math.round(safeValue * 100) / 100;
+  return Number.isFinite(rounded) ? rounded : 0;
+};
+
 export function calcularMesesAteEvento(dataEvento: Date, dataAtual: Date = new Date()): number {
   const anoEvento = dataEvento.getFullYear();
   const mesEvento = dataEvento.getMonth();
@@ -127,52 +146,76 @@ export function calcularMesesAteEvento(dataEvento: Date, dataAtual: Date = new D
   const mesesRestantes = (anoEvento - anoAtual) * 12 + (mesEvento - mesAtual);
 
   // Retorna pelo menos 1 mês, máximo 30 meses para evitar cálculos irreais
-  return Math.max(1, Math.min(30, mesesRestantes - 1)); // -1 para considerar 30 dias antes
+  if (!Number.isFinite(mesesRestantes)) {
+    return 1;
+  }
+
+  return Math.max(1, Math.min(MAX_MESES_PAGAMENTO_INDIA, mesesRestantes - 1)); // -1 para considerar 30 dias antes
 }
 
 export function calcularJurosCompostos(valorPrincipal: number, taxa: number, periodos: number): number {
-  return valorPrincipal * Math.pow(1 + taxa, periodos);
+  if (!Number.isFinite(valorPrincipal)) {
+    throw new Error('Valor principal inválido para cálculo de juros compostos');
+  }
+
+  const taxaNormalizada = clampNumber(taxa, MIN_COMPOUND_RATE, MAX_COMPOUND_RATE);
+  const periodosNormalizados = clampNumber(periodos, -MAX_COMPOUND_PERIODS, MAX_COMPOUND_PERIODS);
+  const base = Math.max(1 + taxaNormalizada, 1e-6);
+
+  const logResultado = periodosNormalizados * Math.log(base);
+  const limiteLog = Math.log(Number.MAX_SAFE_INTEGER / Math.max(1, Math.abs(valorPrincipal)));
+  const logLimitado = clampNumber(logResultado, -limiteLog, limiteLog);
+
+  const fator = Math.exp(logLimitado);
+  const resultado = valorPrincipal * fator;
+
+  if (!Number.isFinite(resultado)) {
+    throw new Error('Resultado inválido ao calcular juros compostos');
+  }
+
+  return resultado;
 }
 
 export function calcularPagamentoIndaia(params: PagamentoIndaiaParams): PagamentoIndaiaCalculation {
   const { valorTotal, dataEvento, dataAtual = new Date() } = params;
 
-  if (valorTotal <= 0) {
+  if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
     throw new Error('Valor total deve ser maior que zero');
   }
 
   const mesesParaPagamento = calcularMesesAteEvento(dataEvento, dataAtual);
+  const parcelasPlanejadas = Math.max(1, Math.trunc(clampNumber(mesesParaPagamento, 1, MAX_MESES_PAGAMENTO_INDIA)));
 
   // Calcular valor total com juros compostos
-  const valorTotalComJuros = calcularJurosCompostos(valorTotal, TAXA_JUROS_MENSAL, mesesParaPagamento);
+  const valorTotalComJuros = calcularJurosCompostos(valorTotal, TAXA_JUROS_MENSAL, parcelasPlanejadas);
 
   // Calcular valores base
   const valorEntrada = valorTotalComJuros * PERCENTUAL_ENTRADA;
   const valorSaldoFinal = valorTotalComJuros * PERCENTUAL_SALDO_FINAL;
 
   // Valor restante para as parcelas (50% do total com juros)
-  const valorRestanteParaParcelas = valorTotalComJuros - valorEntrada - valorSaldoFinal;
+  const valorRestanteParaParcelas = Math.max(0, valorTotalComJuros - valorEntrada - valorSaldoFinal);
 
   // Definir quantidade de parcelas (mínimo 1, máximo baseado nos meses até 30 dias antes do evento)
-  const quantidadeParcelas = Math.max(1, mesesParaPagamento);
+  const quantidadeParcelas = parcelasPlanejadas;
 
   // Calcular valor de cada parcela
-  const valorParcelas = valorRestanteParaParcelas / quantidadeParcelas;
+  const valorParcelas = quantidadeParcelas > 0 ? valorRestanteParaParcelas / quantidadeParcelas : 0;
 
   return {
     valorTotal,
-    valorTotalComJuros: Math.round(valorTotalComJuros * 100) / 100,
-    valorEntrada: Math.round(valorEntrada * 100) / 100,
-    valorParcelas: Math.round(valorParcelas * 100) / 100,
+    valorTotalComJuros: roundCurrency(valorTotalComJuros),
+    valorEntrada: roundCurrency(Math.max(0, valorEntrada)),
+    valorParcelas: roundCurrency(Math.max(0, valorParcelas)),
     quantidadeParcelas,
-    valorSaldoFinal: Math.round(valorSaldoFinal * 100) / 100,
-    jurosAplicados: Math.round((valorTotalComJuros - valorTotal) * 100) / 100,
+    valorSaldoFinal: roundCurrency(Math.max(0, valorSaldoFinal)),
+    jurosAplicados: roundCurrency(Math.max(0, valorTotalComJuros - valorTotal)),
     percentualJuros: TAXA_JUROS_MENSAL * 100
   };
 }
 
 export function calcularPagamentoSemJuros1mais4(valorTotal: number): PagamentoSemJuros1mais4Calculation {
-  if (valorTotal <= 0) {
+  if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
     throw new Error('Valor total deve ser maior que zero');
   }
 
@@ -182,15 +225,15 @@ export function calcularPagamentoSemJuros1mais4(valorTotal: number): PagamentoSe
 
   return {
     valorTotal,
-    valorEntrada: Math.round(valorEntrada * 100) / 100,
-    valorParcelas: Math.round(valorParcelas * 100) / 100,
+    valorEntrada: roundCurrency(Math.max(0, valorEntrada)),
+    valorParcelas: roundCurrency(Math.max(0, valorParcelas)),
     quantidadeParcelas: QUANTIDADE_PARCELAS_SEM_JUROS,
     temSaldoFinal: false
   };
 }
 
 export function calcularPagamentoAVistaDinheiro(valorTotal: number): PagamentoAVistaDinheiroCalculation {
-  if (valorTotal <= 0) {
+  if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
     throw new Error('Valor total deve ser maior que zero');
   }
 
@@ -204,60 +247,62 @@ export function calcularPagamentoAVistaDinheiro(valorTotal: number): PagamentoAV
 
   return {
     valorTotal,
-    valorTotalComDesconto: Math.round(valorTotalComDesconto * 100) / 100,
-    valorEntrada: Math.round(valorEntrada * 100) / 100,
-    valorSaldoFinal: Math.round(valorSaldoFinal * 100) / 100,
+    valorTotalComDesconto: roundCurrency(Math.max(0, valorTotalComDesconto)),
+    valorEntrada: roundCurrency(Math.max(0, valorEntrada)),
+    valorSaldoFinal: roundCurrency(Math.max(0, valorSaldoFinal)),
     percentualDesconto: PERCENTUAL_DESCONTO_A_VISTA_DINHEIRO * 100,
-    descontoAplicado: Math.round(descontoAplicado * 100) / 100
+    descontoAplicado: roundCurrency(Math.max(0, descontoAplicado))
   };
 }
 
 export function calcularPagamentoAVistaParcialCartao(params: PagamentoAVistaParcialCartaoParams): PagamentoAVistaParcialCartaoCalculation {
   const { valorTotal, quantidadeParcelas, taxaJuros = TAXA_JUROS_CARTAO_PADRAO } = params;
 
-  if (valorTotal <= 0) {
+  if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
     throw new Error('Valor total deve ser maior que zero');
   }
 
-  if (quantidadeParcelas < 1 || quantidadeParcelas > MAX_PARCELAS_CARTAO) {
-    throw new Error(`Quantidade de parcelas deve ser entre 1 e ${MAX_PARCELAS_CARTAO}`);
-  }
+  const parcelasNormalizadas = Math.trunc(
+    clampNumber(Number.isFinite(quantidadeParcelas) ? quantidadeParcelas : 1, 1, MAX_PARCELAS_CARTAO)
+  );
 
-  if (taxaJuros < 0) {
-    throw new Error('Taxa de juros não pode ser negativa');
-  }
+  const taxaNormalizada = clampNumber(
+    Number.isFinite(taxaJuros) ? taxaJuros : TAXA_JUROS_CARTAO_PADRAO,
+    0,
+    MAX_COMPOUND_RATE
+  );
 
   // Calcular entrada (20% do total)
   const valorEntrada = valorTotal * PERCENTUAL_ENTRADA_A_VISTA_PARCIAL_CARTAO;
   
   // Valor restante para parcelamento no cartão
-  const valorRestante = valorTotal - valorEntrada;
+  const valorRestante = Math.max(0, valorTotal - valorEntrada);
   
   // Calcular valor total com juros compostos
-  const valorTotalComJuros = calcularJurosCompostos(valorRestante, taxaJuros, quantidadeParcelas);
+  const valorTotalComJuros = calcularJurosCompostos(valorRestante, taxaNormalizada, parcelasNormalizadas);
   
   // Valor de cada parcela do cartão
-  const valorParcelaCartao = valorTotalComJuros / quantidadeParcelas;
+  const valorParcelaCartao = parcelasNormalizadas > 0 ? valorTotalComJuros / parcelasNormalizadas : 0;
   
   // Juros aplicados
   const jurosAplicados = valorTotalComJuros - valorRestante;
 
   return {
     valorTotal,
-    valorEntrada: Math.round(valorEntrada * 100) / 100,
-    valorRestante: Math.round(valorRestante * 100) / 100,
-    valorParcelaCartao: Math.round(valorParcelaCartao * 100) / 100,
-    quantidadeParcelasCartao: quantidadeParcelas,
-    valorTotalComJuros: Math.round(valorTotalComJuros * 100) / 100,
-    jurosAplicados: Math.round(jurosAplicados * 100) / 100,
-    percentualJuros: taxaJuros * 100
+    valorEntrada: roundCurrency(Math.max(0, valorEntrada)),
+    valorRestante: roundCurrency(Math.max(0, valorRestante)),
+    valorParcelaCartao: roundCurrency(Math.max(0, valorParcelaCartao)),
+    quantidadeParcelasCartao: parcelasNormalizadas,
+    valorTotalComJuros: roundCurrency(Math.max(0, valorTotalComJuros)),
+    jurosAplicados: roundCurrency(Math.max(0, jurosAplicados)),
+    percentualJuros: taxaNormalizada * 100
   };
 }
 
 export function validarPagamentoIndaia(params: PagamentoIndaiaParams): string[] {
   const errors: string[] = [];
 
-  if (params.valorTotal <= 0) {
+  if (!Number.isFinite(params.valorTotal) || params.valorTotal <= 0) {
     errors.push('Valor total deve ser maior que zero');
   }
 
@@ -276,7 +321,7 @@ export function validarPagamentoIndaia(params: PagamentoIndaiaParams): string[] 
 export function validarPagamentoSemJuros1mais4(valorTotal: number): string[] {
   const errors: string[] = [];
 
-  if (valorTotal <= 0) {
+  if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
     errors.push('Valor total deve ser maior que zero');
   }
 
@@ -286,7 +331,7 @@ export function validarPagamentoSemJuros1mais4(valorTotal: number): string[] {
 export function validarPagamentoAVistaDinheiro(valorTotal: number): string[] {
   const errors: string[] = [];
 
-  if (valorTotal <= 0) {
+  if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
     errors.push('Valor total deve ser maior que zero');
   }
 
@@ -296,7 +341,7 @@ export function validarPagamentoAVistaDinheiro(valorTotal: number): string[] {
 export function validarPagamentoAVistaParcialCartao(params: PagamentoAVistaParcialCartaoParams): string[] {
   const errors: string[] = [];
 
-  if (params.valorTotal <= 0) {
+  if (!Number.isFinite(params.valorTotal) || params.valorTotal <= 0) {
     errors.push('Valor total deve ser maior que zero');
   }
 
@@ -368,17 +413,17 @@ export function formatarResumoFinanceiroAVistaParcialCartao(calculo: PagamentoAV
 }
 
 export function calcularCondicaoEspecialConsultor(params: CondicaoEspecialConsultorParams): CondicaoEspecialConsultorCalculation {
-  const { 
-    valorTotal, 
-    valorEntrada, 
-    parcelasEntrada, 
-    parcelasIntermediarias, 
-    parcelasSaldoFinal = 1, 
+  const {
+    valorTotal,
+    valorEntrada,
+    parcelasEntrada,
+    parcelasIntermediarias,
+    parcelasSaldoFinal = 1,
     taxaJuros = TAXA_JUROS_CONSULTOR_PADRAO,
-    dataEvento 
+    dataEvento
   } = params;
 
-  if (valorTotal <= 0) {
+  if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
     throw new Error('Valor total deve ser maior que zero');
   }
 
@@ -386,30 +431,43 @@ export function calcularCondicaoEspecialConsultor(params: CondicaoEspecialConsul
     throw new Error(`Valor mínimo de entrada é ${VALOR_MINIMO_ENTRADA_CONSULTOR.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`);
   }
 
-  if (parcelasEntrada > MAX_PARCELAS_ENTRADA_SEM_JUROS) {
-    throw new Error(`Máximo de ${MAX_PARCELAS_ENTRADA_SEM_JUROS}x para parcelas da entrada`);
+  if (parcelasEntrada < 1 || parcelasEntrada > MAX_PARCELAS_ENTRADA_SEM_JUROS) {
+    throw new Error(`Parcelas da entrada devem ser entre 1 e ${MAX_PARCELAS_ENTRADA_SEM_JUROS}`);
+  }
+
+  if (parcelasIntermediarias < MIN_PARCELAS_PARA_CONSULTOR) {
+    throw new Error(`Mínimo de ${MIN_PARCELAS_PARA_CONSULTOR} parcelas intermediárias para usar este modelo`);
   }
 
   if (parcelasSaldoFinal > MAX_PARCELAS_SALDO_FINAL_CONSULTOR) {
     throw new Error(`Máximo de ${MAX_PARCELAS_SALDO_FINAL_CONSULTOR}x para parcelas do saldo final`);
   }
 
+  if (!Number.isFinite(taxaJuros) || taxaJuros < 0) {
+    throw new Error('Taxa de juros não pode ser negativa');
+  }
+
+  const parcelasEntradaNormalizadas = Math.max(1, Math.trunc(parcelasEntrada));
+  const parcelasIntermediariasNormalizadas = Math.max(1, Math.trunc(parcelasIntermediarias));
+  const parcelasSaldoFinalNormalizadas = Math.max(1, Math.trunc(parcelasSaldoFinal));
+  const taxaNormalizada = clampNumber(taxaJuros, 0, MAX_COMPOUND_RATE);
+
   // Calcular valor das parcelas da entrada (sem juros)
-  const valorParcelaEntrada = parcelasEntrada > 0 ? valorEntrada / parcelasEntrada : valorEntrada;
+  const valorParcelaEntrada = parcelasEntradaNormalizadas > 0 ? valorEntrada / parcelasEntradaNormalizadas : valorEntrada;
 
   // Calcular valor restante após entrada
   const valorRestante = valorTotal - valorEntrada;
 
   // Calcular valor das parcelas intermediárias
-  const valorParcelaIntermediaria = parcelasIntermediarias > 0 ? valorRestante / parcelasIntermediarias : 0;
+  const valorParcelaIntermediaria = parcelasIntermediariasNormalizadas > 0 ? valorRestante / parcelasIntermediariasNormalizadas : 0;
 
   // Verificar se valor da parcela intermediária atende o mínimo
-  if (parcelasIntermediarias > 0 && valorParcelaIntermediaria < VALOR_MINIMO_PARCELA_CONSULTOR) {
+  if (parcelasIntermediariasNormalizadas > 0 && valorParcelaIntermediaria < VALOR_MINIMO_PARCELA_CONSULTOR) {
     throw new Error(`Valor mínimo de parcela é ${VALOR_MINIMO_PARCELA_CONSULTOR.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'})}`);
   }
 
   // Calcular se há saldo final (quando não consegue dividir tudo em parcelas intermediárias)
-  const valorTotalParcelas = valorParcelaIntermediaria * parcelasIntermediarias;
+  const valorTotalParcelas = valorParcelaIntermediaria * parcelasIntermediariasNormalizadas;
   const valorSaldoFinal = valorRestante - valorTotalParcelas;
   const temSaldoFinal = valorSaldoFinal > 0;
 
@@ -418,10 +476,10 @@ export function calcularCondicaoEspecialConsultor(params: CondicaoEspecialConsul
   let valorTotalComJuros = valorTotal;
   let jurosAplicados = 0;
 
-  if (temSaldoFinal && parcelasSaldoFinal > 1) {
+  if (temSaldoFinal && parcelasSaldoFinalNormalizadas > 1) {
     // Aplicar juros compostos no saldo final
-    const valorSaldoComJuros = calcularJurosCompostos(valorSaldoFinal, taxaJuros, parcelasSaldoFinal);
-    valorParcelaSaldoFinal = valorSaldoComJuros / parcelasSaldoFinal;
+    const valorSaldoComJuros = calcularJurosCompostos(valorSaldoFinal, taxaNormalizada, parcelasSaldoFinalNormalizadas);
+    valorParcelaSaldoFinal = parcelasSaldoFinalNormalizadas > 0 ? valorSaldoComJuros / parcelasSaldoFinalNormalizadas : valorSaldoFinal;
     jurosAplicados = valorSaldoComJuros - valorSaldoFinal;
     valorTotalComJuros = valorTotal + jurosAplicados;
   } else if (temSaldoFinal) {
@@ -430,17 +488,17 @@ export function calcularCondicaoEspecialConsultor(params: CondicaoEspecialConsul
 
   return {
     valorTotal,
-    valorEntrada: Math.round(valorEntrada * 100) / 100,
-    parcelasEntrada,
-    valorParcelaEntrada: Math.round(valorParcelaEntrada * 100) / 100,
-    parcelasIntermediarias,
-    valorParcelaIntermediaria: Math.round(valorParcelaIntermediaria * 100) / 100,
-    valorSaldoFinal: Math.round(valorSaldoFinal * 100) / 100,
-    parcelasSaldoFinal,
-    valorParcelaSaldoFinal: Math.round(valorParcelaSaldoFinal * 100) / 100,
-    valorTotalComJuros: Math.round(valorTotalComJuros * 100) / 100,
-    jurosAplicados: Math.round(jurosAplicados * 100) / 100,
-    percentualJuros: taxaJuros * 100,
+    valorEntrada: roundCurrency(Math.max(0, valorEntrada)),
+    parcelasEntrada: parcelasEntradaNormalizadas,
+    valorParcelaEntrada: roundCurrency(Math.max(0, valorParcelaEntrada)),
+    parcelasIntermediarias: parcelasIntermediariasNormalizadas,
+    valorParcelaIntermediaria: roundCurrency(Math.max(0, valorParcelaIntermediaria)),
+    valorSaldoFinal: roundCurrency(Math.max(0, valorSaldoFinal)),
+    parcelasSaldoFinal: parcelasSaldoFinalNormalizadas,
+    valorParcelaSaldoFinal: roundCurrency(Math.max(0, valorParcelaSaldoFinal)),
+    valorTotalComJuros: roundCurrency(Math.max(0, valorTotalComJuros)),
+    jurosAplicados: roundCurrency(Math.max(0, jurosAplicados)),
+    percentualJuros: taxaNormalizada * 100,
     temSaldoFinal
   };
 }
@@ -448,7 +506,7 @@ export function calcularCondicaoEspecialConsultor(params: CondicaoEspecialConsul
 export function validarCondicaoEspecialConsultor(params: CondicaoEspecialConsultorParams): string[] {
   const errors: string[] = [];
 
-  if (params.valorTotal <= 0) {
+  if (!Number.isFinite(params.valorTotal) || params.valorTotal <= 0) {
     errors.push('Valor total deve ser maior que zero');
   }
 
@@ -506,29 +564,36 @@ export function formatarResumoFinanceiroCondicaoEspecialConsultor(calculo: Condi
 
 export function calcularPagamento5050(params: Pagamento5050Params): Pagamento5050Calculation {
   const { valorTotal, dataContrato, dataEvento, taxaJuros = 0.0129 } = params;
-  
+
+  if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
+    throw new Error('Valor total deve ser maior que zero');
+  }
+
+  const taxaNormalizada = clampNumber(Number.isFinite(taxaJuros) ? taxaJuros : 0.0129, 0, MAX_COMPOUND_RATE);
+
   // Calcular valores básicos - dividir em duas partes iguais de 50%
-  const valorEntrada = Math.round(valorTotal * 0.20 * 100) / 100; // 20% do total
-  const valorPrimeiroBoleto = Math.round(valorTotal * 0.30 * 100) / 100; // 30% do total
-  const valorSaldoBase = Math.round(valorTotal * 0.50 * 100) / 100; // 50% do total (segunda metade)
-  
+  const valorEntrada = roundCurrency(Math.max(0, valorTotal * 0.20)); // 20% do total
+  const valorPrimeiroBoleto = roundCurrency(Math.max(0, valorTotal * 0.30)); // 30% do total
+  const valorSaldoBase = roundCurrency(Math.max(0, valorTotal * 0.50)); // 50% do total (segunda metade)
+
   // Calcular datas
   const dataPrimeiroBoleto = new Date(dataContrato);
   dataPrimeiroBoleto.setDate(dataPrimeiroBoleto.getDate() + 30);
-  
+
   const dataSaldoFinal = new Date(dataEvento);
   dataSaldoFinal.setDate(dataSaldoFinal.getDate() - 30);
-  
+
   // Calcular período de juros: apenas do boleto intermediário até o saldo final
-  const diasJuros = Math.max(0, Math.floor((dataSaldoFinal.getTime() - dataPrimeiroBoleto.getTime()) / (1000 * 60 * 60 * 24)));
-  const mesesJuros = Math.max(0, diasJuros / 30);
-  
+  const diffMillis = dataSaldoFinal.getTime() - dataPrimeiroBoleto.getTime();
+  const diasJuros = Math.max(0, Math.floor(diffMillis / (1000 * 60 * 60 * 24)));
+  const mesesJuros = clampNumber(diasJuros / 30, 0, MAX_COMPOUND_PERIODS);
+
   // Aplicar juros compostos apenas no saldo final (50% restante)
-  const valorSaldoFinalComJuros = Math.round(valorSaldoBase * Math.pow(1 + taxaJuros, mesesJuros) * 100) / 100;
-  const jurosAplicados = valorSaldoFinalComJuros - valorSaldoBase;
-  
-  const valorTotalComJuros = valorEntrada + valorPrimeiroBoleto + valorSaldoFinalComJuros;
-  
+  const valorSaldoFinalComJuros = roundCurrency(Math.max(0, calcularJurosCompostos(valorSaldoBase, taxaNormalizada, mesesJuros)));
+  const jurosAplicados = roundCurrency(Math.max(0, valorSaldoFinalComJuros - valorSaldoBase));
+
+  const valorTotalComJuros = roundCurrency(Math.max(0, valorEntrada + valorPrimeiroBoleto + valorSaldoFinalComJuros));
+
   return {
     valorTotal,
     valorEntrada,
@@ -536,7 +601,7 @@ export function calcularPagamento5050(params: Pagamento5050Params): Pagamento505
     valorSaldoFinal: valorSaldoFinalComJuros,
     valorTotalComJuros,
     jurosAplicados,
-    percentualJuros: taxaJuros * 100,
+    percentualJuros: taxaNormalizada * 100,
     dataPrimeiroBoleto,
     dataSaldoFinal
   };
@@ -546,7 +611,7 @@ export function validarPagamento5050(params: Pagamento5050Params): string[] {
   const { valorTotal, dataContrato, dataEvento } = params;
   const errors: string[] = [];
   
-  if (valorTotal <= 0) {
+  if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
     errors.push('Valor total deve ser maior que zero');
   }
   
