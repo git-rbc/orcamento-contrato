@@ -180,7 +180,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Preparar dados para atualização (apenas campos fornecidos)
     const updateData: any = {};
     
-    if (body.codigoReuniao !== undefined) updateData.codigo_reuniao = body.codigoReuniao;
+    if (body.codigoReuniao !== undefined) updateData.codigo_reuniao = body.codigoReuniao || null;
     if (body.clienteId !== undefined) updateData.cliente_id = body.clienteId;
     if (body.dataContratacao !== undefined) updateData.data_contratacao = body.dataContratacao;
     if (body.dataRealizacao !== undefined) updateData.data_realizacao = body.dataRealizacao;

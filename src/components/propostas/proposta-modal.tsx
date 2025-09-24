@@ -159,6 +159,7 @@ const obterTodosItensFlat = (items: LinhaItem[]): LinhaItem[] => {
 };
 
 export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalProps) {
+  const [codigoReuniao, setCodigoReuniao] = useState<string>('');
   const [dataEvento, setDataEvento] = useState<Date | undefined>();
   const [dataContratacao, setDataContratacao] = useState<Date | undefined>();
   const [diaSemana, setDiaSemana] = useState<string>('');
@@ -404,6 +405,7 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
             }
             
             // Preencher campos básicos
+            setCodigoReuniao(proposta.codigo_reuniao || '');
             setClienteId(proposta.cliente_id || '');
 
             // Carregar cliente nos items do ComboboxSearch se existe
@@ -486,6 +488,7 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
             
             
             // Preencher valores
+            setTotalProposta(proposta.total_proposta || 0);
             setValorEntrada(proposta.valor_entrada || 0);
             setValorDesconto(proposta.valor_desconto || 0);
             
@@ -528,6 +531,7 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
         carregarDadosProposta();
       } else {
         // Limpar campos quando criar nova proposta
+        setCodigoReuniao('');
         setDataEvento(undefined);
         setDataContratacao(new Date()); // Sempre usar data atual
         setDiaSemana('');
@@ -967,7 +971,7 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
 
     try {
       const propostaData = {
-        codigoReuniao: '', // Pode ser preenchido quando implementar
+        codigoReuniao,
         clienteId,
         dataContratacao: dataContratacao ? dataContratacao.toISOString().split('T')[0] : undefined,
         dataRealizacao: dataEvento ? dataEvento.toISOString().split('T')[0] : undefined,
@@ -1041,7 +1045,13 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
             <div className="space-y-4">
               <div className="grid grid-cols-5 items-center gap-2">
                 <label className="col-span-2 font-medium" htmlFor="codReuniao">Cód Reunião:</label>
-                <Input id="codReuniao" className="col-span-3" placeholder="P80215" />
+                <Input
+                  id="codReuniao"
+                  className="col-span-3"
+                  placeholder="P80215"
+                  value={codigoReuniao}
+                  onChange={(e) => setCodigoReuniao(e.target.value)}
+                />
               </div>
 
               <div className="grid grid-cols-5 items-center gap-2">
