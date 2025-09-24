@@ -319,6 +319,15 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
     return subtotalComDesconto - descontoCupom;
   };
 
+  // Função para obter descrição do item com status "Não Contratado" quando aplicável
+  const getDescricaoComStatus = (item: LinhaItem): string => {
+    const isEstacionamento = item.descricao.toLowerCase().includes('estacionamento');
+    if (isEstacionamento && item.valorUnitario === 0) {
+      return `${item.descricao} (Não Contratado)`;
+    }
+    return item.descricao;
+  };
+
   // Função para renderizar uma linha de item
   const renderItemRow = (item: LinhaItem) => {
     const isDecoracaoItem = item.descricao === 'Selecione a decoração clicando aqui' ||
@@ -334,7 +343,7 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
             <div className="flex items-center gap-2">
               <Input
                 placeholder={item.calculoAutomatico ? "Serviço template (calculado automaticamente)" : "Clique para selecionar um produto..."}
-                value={item.descricao}
+                value={getDescricaoComStatus(item)}
                 onClick={() => !item.calculoAutomatico && openProductSearch(item.id)}
                 readOnly
                 className={`${!item.calculoAutomatico ? 'cursor-pointer' : ''} flex-1`}

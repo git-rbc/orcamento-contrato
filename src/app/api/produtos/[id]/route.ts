@@ -70,6 +70,7 @@ export async function PATCH(
       tem_taxa_in: body.tem_taxa,
       reajuste_in: body.reajuste,
       desconto_percentual_in: body.desconto_percentual,
+      vinculado_convidados_in: body.vinculado_convidados === true,
       descricao_in: body.descricao,
       observacoes_in: body.observacoes,
       espaco_ids_in: body.espaco_ids

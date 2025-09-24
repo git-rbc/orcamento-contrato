@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,17 +12,65 @@ import { LinhaItem } from './proposta-modal';
 
 interface PropostaSecaoProps {
   items: LinhaItem[];
-  setItems: (items: LinhaItem[]) => void;
+  setItems: React.Dispatch<React.SetStateAction<LinhaItem[]>>;
   titulo: string;
   isCalculating?: boolean; // Adicionar prop para indicar cálculo em andamento
+  numPessoas?: number; // Número de convidados para calcular quantidade automaticamente
 }
 
-export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps) {
+export function PropostaBebidas({ items, setItems, titulo, numPessoas }: PropostaSecaoProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubprodutoModalOpen, setIsSubprodutoModalOpen] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [activeParentProductId, setActiveParentProductId] = useState<string | null>(null);
   const [itemsComDescontoVisivel, setItensComDescontoVisivel] = useState<Set<string>>(new Set());
+  const [produtosVinculados, setProdutosVinculados] = useState<Set<string>>(new Set());
+
+  // Função auxiliar para verificar se um produto está vinculado aos convidados
+  const isProdutoVinculadoConvidados = async (produtoId: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/produtos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [produtoId] })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const produto = result.data?.[0];
+        return produto?.vinculado_convidados === true;
+      }
+    } catch (error) {
+      console.error('Erro ao verificar produto:', error);
+    }
+    return false;
+  };
+
+  // Atualizar quantidades automaticamente quando numPessoas mudar
+  useEffect(() => {
+    if (!numPessoas || produtosVinculados.size === 0) return;
+
+    setItems(prevItems => prevItems.map(item => {
+      let updatedItem = { ...item };
+
+      // Verificar item principal
+      if (item.produtoId && produtosVinculados.has(item.produtoId)) {
+        updatedItem.quantidade = numPessoas;
+      }
+
+      // Verificar subprodutos
+      if (item.subprodutos) {
+        updatedItem.subprodutos = item.subprodutos.map(subproduto => ({
+          ...subproduto,
+          quantidade: subproduto.produtoId && produtosVinculados.has(subproduto.produtoId)
+            ? numPessoas
+            : subproduto.quantidade
+        }));
+      }
+
+      return updatedItem;
+    }));
+  }, [numPessoas, produtosVinculados]);
 
   const handleAddItem = () => {
     setItems([...items, { 
@@ -69,7 +117,15 @@ export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps)
 
   const handleProductSelect = (produto: Produto) => {
     if (!activeItemId) return;
-    
+
+    // Calcular quantidade baseada na configuração do produto
+    const quantidade = produto.vinculado_convidados && numPessoas ? numPessoas : 1;
+
+    // Atualizar estado de produtos vinculados
+    if (produto.vinculado_convidados) {
+      setProdutosVinculados(prev => new Set(prev).add(produto.id));
+    }
+
     setItems(items.map(item => {
       // Verificar se é o item principal
       if (item.id === activeItemId) {
@@ -79,11 +135,12 @@ export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps)
           servicoTemplateId: 'e3f4d5c6-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
           descricao: produto.nome,
           valorUnitario: produto.valor,
+          quantidade,
           descontoPermitido: produto.desconto_percentual || 0,
           descontoAplicado: 0,
         };
       }
-      
+
       // Verificar subprodutos
       if (item.subprodutos && item.subprodutos.length > 0) {
         const subprodutosAtualizados = item.subprodutos.map(sub => {
@@ -94,19 +151,20 @@ export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps)
               servicoTemplateId: 'e3f4d5c6-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
               descricao: produto.nome,
               valorUnitario: produto.valor,
+              quantidade,
               descontoPermitido: produto.desconto_percentual || 0,
               descontoAplicado: 0,
             };
           }
           return sub;
         });
-        
+
         return { ...item, subprodutos: subprodutosAtualizados };
       }
-      
+
       return item;
     }));
-    
+
     setActiveItemId(null);
   };
 
@@ -324,11 +382,16 @@ export function PropostaBebidas({ items, setItems, titulo }: PropostaSecaoProps)
           </td>
         )}
         <td className="px-3 py-1 text-center">
-          <Input 
-            type="number" 
+          <Input
+            type="number"
             value={item.quantidade === 0 ? '' : item.quantidade}
             onChange={e => handleChange(item.id, 'quantidade', Number(e.target.value))}
             className="text-center"
+            readOnly={item.produtoId ? produtosVinculados.has(item.produtoId) : false}
+            title={item.produtoId && produtosVinculados.has(item.produtoId)
+              ? 'Quantidade vinculada ao número de convidados'
+              : undefined
+            }
           />
         </td>
         <td className="px-3 py-1 text-right">

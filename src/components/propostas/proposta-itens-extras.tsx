@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,16 +12,64 @@ import { LinhaItem } from './proposta-modal';
 
 interface PropostaSecaoProps {
   items: LinhaItem[];
-  setItems: (items: LinhaItem[]) => void;
+  setItems: React.Dispatch<React.SetStateAction<LinhaItem[]>>;
   titulo: string;
+  numPessoas?: number; // Número de convidados para calcular quantidade automaticamente
 }
 
-export function PropostaItensExtras({ items, setItems, titulo }: PropostaSecaoProps) {
+export function PropostaItensExtras({ items, setItems, titulo, numPessoas }: PropostaSecaoProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubprodutoModalOpen, setIsSubprodutoModalOpen] = useState(false);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [activeParentProductId, setActiveParentProductId] = useState<string | null>(null);
   const [itemsComDescontoVisivel, setItensComDescontoVisivel] = useState<Set<string>>(new Set());
+  const [produtosVinculados, setProdutosVinculados] = useState<Set<string>>(new Set());
+
+  // Função auxiliar para verificar se um produto está vinculado aos convidados
+  const isProdutoVinculadoConvidados = async (produtoId: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/produtos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [produtoId] })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const produto = result.data?.[0];
+        return produto?.vinculado_convidados === true;
+      }
+    } catch (error) {
+      console.error('Erro ao verificar produto:', error);
+    }
+    return false;
+  };
+
+  // Atualizar quantidades automaticamente quando numPessoas mudar
+  useEffect(() => {
+    if (!numPessoas || produtosVinculados.size === 0) return;
+
+    setItems(prevItems => prevItems.map(item => {
+      let updatedItem = { ...item };
+
+      // Verificar item principal
+      if (item.produtoId && produtosVinculados.has(item.produtoId)) {
+        updatedItem.quantidade = numPessoas;
+      }
+
+      // Verificar subprodutos
+      if (item.subprodutos) {
+        updatedItem.subprodutos = item.subprodutos.map(subproduto => ({
+          ...subproduto,
+          quantidade: subproduto.produtoId && produtosVinculados.has(subproduto.produtoId)
+            ? numPessoas
+            : subproduto.quantidade
+        }));
+      }
+
+      return updatedItem;
+    }));
+  }, [numPessoas, produtosVinculados]);
 
   const addExtra = () => setItems([...items, { id: crypto.randomUUID(), produtoId: null, descricao: '', valorUnitario: 0, quantidade: 1, descontoPermitido: 0, descontoAplicado: 0, tipoItem: 'produto', calculoAutomatico: false, subprodutos: [] }]);
 
@@ -53,8 +101,21 @@ export function PropostaItensExtras({ items, setItems, titulo }: PropostaSecaoPr
     setIsSubprodutoModalOpen(true);
   };
   
-  const handleProductSelect = (produto: Produto) => {
+  const handleProductSelect = async (produto: Produto) => {
     if (!activeItemId) return;
+
+    // Verificar se o produto está vinculado aos convidados
+    const isVinculado = await isProdutoVinculadoConvidados(produto.id);
+    const quantidade = isVinculado && numPessoas ? numPessoas : 1;
+
+    // Atualizar estado dos produtos vinculados
+    const newProdutosVinculados = new Set(produtosVinculados);
+    if (isVinculado) {
+      newProdutosVinculados.add(produto.id);
+    } else {
+      newProdutosVinculados.delete(produto.id);
+    }
+    setProdutosVinculados(newProdutosVinculados);
 
     setItems(items.map(item => {
       // Verificar se é o item principal
@@ -65,6 +126,7 @@ export function PropostaItensExtras({ items, setItems, titulo }: PropostaSecaoPr
           servicoTemplateId: 'e3f4d5c6-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
           descricao: produto.nome,
           valorUnitario: produto.valor,
+          quantidade: quantidade,
           descontoPermitido: produto.desconto_percentual || 0,
           descontoAplicado: 0,
         };
@@ -80,6 +142,7 @@ export function PropostaItensExtras({ items, setItems, titulo }: PropostaSecaoPr
               servicoTemplateId: 'e3f4d5c6-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
               descricao: produto.nome,
               valorUnitario: produto.valor,
+              quantidade: quantidade,
               descontoPermitido: produto.desconto_percentual || 0,
               descontoAplicado: 0,
             };
@@ -96,8 +159,21 @@ export function PropostaItensExtras({ items, setItems, titulo }: PropostaSecaoPr
     setActiveItemId(null);
   };
 
-  const handleSubprodutoSelect = (subproduto: any) => {
+  const handleSubprodutoSelect = async (subproduto: any) => {
     if (!activeItemId) return;
+
+    // Verificar se o subproduto está vinculado aos convidados
+    const isVinculado = await isProdutoVinculadoConvidados(subproduto.id);
+    const quantidade = isVinculado && numPessoas ? numPessoas : 1;
+
+    // Atualizar estado dos produtos vinculados
+    const newProdutosVinculados = new Set(produtosVinculados);
+    if (isVinculado) {
+      newProdutosVinculados.add(subproduto.id);
+    } else {
+      newProdutosVinculados.delete(subproduto.id);
+    }
+    setProdutosVinculados(newProdutosVinculados);
 
     setItems(items.map(item => {
       if (item.id === activeItemId) {
@@ -107,7 +183,7 @@ export function PropostaItensExtras({ items, setItems, titulo }: PropostaSecaoPr
           servicoTemplateId: 'e3f4d5c6-7a8b-9c0d-1e2f-3a4b5c6d7e8f',
           descricao: subproduto.nome,
           valorUnitario: subproduto.valor,
-          quantidade: 1,
+          quantidade: quantidade,
           descontoPermitido: 0,
           descontoAplicado: 0,
           tipoItem: 'produto',
@@ -330,6 +406,7 @@ export function PropostaItensExtras({ items, setItems, titulo }: PropostaSecaoPr
             value={item.quantidade === 0 ? '' : item.quantidade}
             onChange={e => change(item.id, 'quantidade', Number(e.target.value))}
             className="text-center"
+            readOnly={item.produtoId && produtosVinculados.has(item.produtoId)}
           />
         </td>
         <td className="px-3 py-1 text-right">

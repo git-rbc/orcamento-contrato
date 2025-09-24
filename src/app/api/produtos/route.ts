@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
       tem_taxa_in: body.tem_taxa !== false,
       reajuste_in: body.reajuste === true,
       desconto_percentual_in: body.desconto_percentual || 0,
+      vinculado_convidados_in: body.vinculado_convidados === true,
       descricao_in: body.descricao || null,
       observacoes_in: body.observacoes || null,
       espaco_ids_in: body.espaco_ids || []

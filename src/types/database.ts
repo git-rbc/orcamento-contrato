@@ -100,7 +100,8 @@ export interface Produto {
   created_at: string;
   updated_at: string;
   desconto_percentual?: number;
-  
+  vinculado_convidados?: boolean;
+
   // Relacionamentos
   categoria?: CategoriaProduto;
   espacos?: { espaco: EspacoEvento }[];

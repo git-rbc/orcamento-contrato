@@ -36,6 +36,7 @@ export default function NovoProdutoPage() {
     observacoes: string;
     reajuste: boolean;
     desconto_percentual: number;
+    vinculado_convidados: boolean;
     espaco_ids: string[];
   }>({
     nome: '',
@@ -48,6 +49,7 @@ export default function NovoProdutoPage() {
     observacoes: '',
     reajuste: false,
     desconto_percentual: 0,
+    vinculado_convidados: false,
     espaco_ids: []
   });
 
@@ -316,6 +318,22 @@ export default function NovoProdutoPage() {
                     <Label htmlFor="reajuste" className="cursor-pointer text-sm font-medium">
                       TAXA DE REAJUSTE
                     </Label>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="vinculado_convidados"
+                        checked={formData.vinculado_convidados}
+                        onCheckedChange={(checked) => handleChange('vinculado_convidados', checked)}
+                      />
+                      <Label htmlFor="vinculado_convidados" className="cursor-pointer text-sm font-medium">
+                        QUANTIDADE VINCULADA AO Nº DE CONVIDADOS
+                      </Label>
+                    </div>
+                    <p className="text-xs text-muted-foreground ml-6">
+                      Quando marcado, a quantidade será automaticamente igual ao número de convidados na proposta
+                    </p>
                   </div>
                 </div>
 

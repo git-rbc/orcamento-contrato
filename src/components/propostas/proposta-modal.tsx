@@ -1175,12 +1175,22 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
 
           {/* Seção Alimentação */}
           <div className="px-6 pb-6">
-            <PropostaAlimentacao items={alimentacaoItens} setItems={setAlimentacaoItens} titulo="Alimentação" />
+            <PropostaAlimentacao
+              items={alimentacaoItens}
+              setItems={setAlimentacaoItens}
+              titulo="Alimentação"
+              numPessoas={typeof numPessoas === 'number' ? numPessoas : undefined}
+            />
           </div>
 
           {/* Seção Bebidas */}
           <div className="px-6 pb-6">
-            <PropostaBebidas items={bebidasItens} setItems={setBebidasItens} titulo="Bebidas" />
+            <PropostaBebidas
+              items={bebidasItens}
+              setItems={setBebidasItens}
+              titulo="Bebidas"
+              numPessoas={typeof numPessoas === 'number' ? numPessoas : undefined}
+            />
           </div>
 
           {/* Seção Serviços */}
@@ -1197,7 +1207,7 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
 
           {/* Seção Itens Extras */}
           <div className="px-6 pb-6">
-            <PropostaItensExtras items={itensExtras} setItems={setItensExtras} titulo="Itens Extras" />
+            <PropostaItensExtras items={itensExtras} setItems={setItensExtras} titulo="Itens Extras" numPessoas={typeof numPessoas === 'number' ? numPessoas : undefined} />
           </div>
 
           {/* Resumo e Cupom */}
