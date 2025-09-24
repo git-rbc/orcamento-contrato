@@ -405,6 +405,20 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
             
             // Preencher campos básicos
             setClienteId(proposta.cliente_id || '');
+
+            // Carregar cliente nos items do ComboboxSearch se existe
+            if (proposta.cliente) {
+              const clienteItem: SearchItem = {
+                id: proposta.cliente.id,
+                nome: proposta.cliente.nome,
+                cpf_cnpj: proposta.cliente.cpf_cnpj,
+                valor_unitario: 0,
+                categoria: '',
+                unidade_medida: ''
+              };
+              setClienteItems([clienteItem]);
+            }
+
             setDataEvento(proposta.data_realizacao ? new Date(proposta.data_realizacao) : undefined);
             setDataContratacao(proposta.data_contratacao ? new Date(proposta.data_contratacao) : undefined);
             setDiaSemana(proposta.dia_semana || '');
@@ -955,8 +969,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
       const propostaData = {
         codigoReuniao: '', // Pode ser preenchido quando implementar
         clienteId,
-        dataContratacao: dataContratacao?.toISOString().split('T')[0],
-        dataRealizacao: dataEvento?.toISOString().split('T')[0],
+        dataContratacao: dataContratacao ? dataContratacao.toISOString().split('T')[0] : undefined,
+        dataRealizacao: dataEvento ? dataEvento.toISOString().split('T')[0] : undefined,
         diaSemana,
         espacoId,
         layoutId,
