@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Save, X, Settings, Percent, Users, MapPin, DollarSign, Calendar } from 'lucide-react';
 import {
   Dialog,
@@ -332,6 +333,7 @@ export function EditServicoModal({ isOpen, onClose, servico, onSave }: EditServi
   const [formData, setFormData] = useState({
     nome: servico.nome,
     descricao: servico.descricao || '',
+    para_reajuste: servico.para_reajuste || false,
     parametros: {} as Record<string, string>
   });
 
@@ -345,6 +347,7 @@ export function EditServicoModal({ isOpen, onClose, servico, onSave }: EditServi
     setFormData({
       nome: servico.nome,
       descricao: servico.descricao || '',
+      para_reajuste: servico.para_reajuste || false,
       parametros: parametrosObj
     });
   }, [servico]);
@@ -372,6 +375,7 @@ export function EditServicoModal({ isOpen, onClose, servico, onSave }: EditServi
     const dadosParaEnviar = {
       nome: formData.nome,
       descricao: formData.descricao,
+      para_reajuste: formData.para_reajuste,
       parametros: parametrosArray
     };
 
@@ -579,6 +583,26 @@ export function EditServicoModal({ isOpen, onClose, servico, onSave }: EditServi
                   rows={3}
                 />
               </div>
+
+              {servico.nome === 'Equipe (Taxa de Serviço)' && (
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="para_reajuste"
+                    checked={formData.para_reajuste}
+                    onCheckedChange={(checked) =>
+                      setFormData(prev => ({ ...prev, para_reajuste: checked as boolean }))
+                    }
+                  />
+                  <div>
+                    <Label htmlFor="para_reajuste" className="font-medium">
+                      Para REAJUSTE
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Quando marcado, a taxa de serviço será calculada também sobre produtos marcados para reajuste
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

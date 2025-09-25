@@ -44,6 +44,7 @@ export async function PUT(
       nome: body.nome,
       descricao: body.descricao,
       ativo: body.ativo,
+      para_reajuste: body.para_reajuste,
       parametros: body.parametros
     };
 

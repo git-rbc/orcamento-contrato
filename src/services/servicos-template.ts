@@ -64,6 +64,7 @@ export class ServicoTemplateService {
       nome: dados.nome?.trim(),
       descricao: dados.descricao?.trim(),
       ativo: dados.ativo,
+      para_reajuste: dados.para_reajuste,
       updated_at: new Date().toISOString()
     };
 

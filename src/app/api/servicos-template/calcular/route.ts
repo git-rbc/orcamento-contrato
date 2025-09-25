@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
 function calcularPercentualProdutos(servico: any, dados: CalcularServicoRequest): number {
   const percentualParam = servico.parametros?.find((p: any) => p.chave === 'percentual');
   const campoParam = servico.parametros?.find((p: any) => p.chave === 'campo_produto');
-  
+
   if (!percentualParam || !campoParam) {
     return 0;
   }
@@ -112,7 +112,12 @@ function calcularPercentualProdutos(servico: any, dados: CalcularServicoRequest)
 
   // Determinar qual campo usar baseado no serviço
   if (campoParam.valor === 'tem_taxa') {
-    valorBase = dados.produtosCampoTaxa || 0;
+    // Se para_reajuste for true, somar também produtos com reajuste
+    if (servico.para_reajuste === true) {
+      valorBase = (dados.produtosCampoTaxa || 0) + (dados.produtosCampoReajuste || 0);
+    } else {
+      valorBase = dados.produtosCampoTaxa || 0;
+    }
   } else if (campoParam.valor === 'reajuste') {
     valorBase = dados.produtosCampoReajuste || 0;
   }
@@ -238,9 +243,21 @@ function extractParametrosUtilizados(servico: any, dados: CalcularServicoRequest
     case 'percentual_produtos':
       parametros.percentual = servico.parametros?.find((p: any) => p.chave === 'percentual')?.valor;
       parametros.campo_produto = servico.parametros?.find((p: any) => p.chave === 'campo_produto')?.valor;
-      parametros.valor_base = servico.parametros?.find((p: any) => p.chave === 'campo_produto')?.valor === 'tem_taxa' 
-        ? dados.produtosCampoTaxa 
-        : dados.produtosCampoReajuste;
+      parametros.para_reajuste = servico.para_reajuste;
+
+      // Determinar valor base conforme lógica de cálculo
+      if (servico.parametros?.find((p: any) => p.chave === 'campo_produto')?.valor === 'tem_taxa') {
+        if (servico.para_reajuste === true) {
+          parametros.valor_base = (dados.produtosCampoTaxa || 0) + (dados.produtosCampoReajuste || 0);
+          parametros.valor_base_taxa = dados.produtosCampoTaxa;
+          parametros.valor_base_reajuste = dados.produtosCampoReajuste;
+        } else {
+          parametros.valor_base = dados.produtosCampoTaxa;
+          parametros.valor_base_taxa = dados.produtosCampoTaxa;
+        }
+      } else {
+        parametros.valor_base = dados.produtosCampoReajuste;
+      }
       break;
     
     case 'valor_fixo_ambiente':

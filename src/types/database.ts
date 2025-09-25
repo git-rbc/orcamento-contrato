@@ -270,6 +270,7 @@ export interface ServicoTemplate extends BaseEntity {
   tipo_calculo: 'percentual_produtos' | 'valor_fixo_ambiente' | 'por_convidados' | 'valor_minimo_ambiente' | 'valor_minimo_ambiente_dia' | 'reajuste_temporal';
   ativo: boolean;
   ordem: number;
+  para_reajuste?: boolean;
   parametros?: ServicoParametro[];
 }
 
@@ -286,6 +287,7 @@ export interface UpdateServicoTemplateDTO {
   nome?: string;
   descricao?: string;
   ativo?: boolean;
+  para_reajuste?: boolean;
   parametros?: {
     chave: string;
     valor: string;
