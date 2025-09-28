@@ -18,7 +18,7 @@ export async function getVendor(props: {
   let query = supabase.from("vendor").select("*", { count: "exact" });
 
   if (search) {
-    query = query.like("name", `%${search}%`);
+    query = query.ilike("name", `%${search}%`);
   }
 
   const { data, error, count } = await query.range(from, to);
