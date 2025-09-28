@@ -34,7 +34,8 @@ import {
   TrendingUp,
   MessageSquare,
   List,
-  CalendarDays
+  CalendarDays,
+  Briefcase
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -111,6 +112,13 @@ const AVAILABLE_MENUS: MenuItem[] = [
         href: '/dashboard/agendamento/performance',
         icon: 'TrendingUp',
         description: 'Rankings (Geral, Online, Presencial, 10 dias)'
+      },
+      {
+        title: 'Vendedores',
+        slug: 'schedule-vendor',
+        href: '/dashboard/agendamento/vendedores',
+        icon: 'Briefcase',
+        description: 'Vendedores disponíveis para agendamentos'
       }
     ]
   },
@@ -279,7 +287,8 @@ const iconMap: Record<string, any> = {
   TrendingUp,
   MessageSquare,
   List,
-  CalendarDays
+  CalendarDays,
+  Briefcase,
 };
 
 // Componente para renderizar itens de menu (incluindo submenus)
