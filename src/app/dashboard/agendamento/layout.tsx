@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'Agendamento | Gestão de Contratos',
@@ -12,7 +13,9 @@ export default function AgendamentoLayout({
 }) {
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      {children}
+      <Suspense fallback={<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"/>}>
+        {children}
+      </Suspense>
     </div>
   );
 }
