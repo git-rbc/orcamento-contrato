@@ -35,7 +35,8 @@ import {
   MessageSquare,
   List,
   CalendarDays,
-  Briefcase
+  Briefcase,
+  MapPin
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -119,6 +120,13 @@ const AVAILABLE_MENUS: MenuItem[] = [
         href: '/dashboard/agendamento/vendedores',
         icon: 'Briefcase',
         description: 'Vendedores disponíveis para agendamentos'
+      },
+      {
+        title: 'Cidades',
+        slug: 'schedule-city',
+        href: '/dashboard/agendamento/cidades',
+        icon: 'MapPin',
+        description: 'Cadastro de cidades'
       }
     ]
   },
@@ -289,6 +297,7 @@ const iconMap: Record<string, any> = {
   List,
   CalendarDays,
   Briefcase,
+  MapPin,
 };
 
 // Componente para renderizar itens de menu (incluindo submenus)
