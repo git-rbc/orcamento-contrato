@@ -1,11 +1,18 @@
 "use client";
 import { createClient } from "@/lib/supabase";
-import { UIEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FC, UIEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Input } from "./ui/input";
 import useSWRInfinite from "swr/infinite";
+import { RefCallBack } from "react-hook-form";
 
-const CitySelect = () => {
+type CitySelectProps = {
+  ref?: RefCallBack;
+  value: string;
+  onSelect: (city: any) => void;
+}
+
+const CitySelect: FC<CitySelectProps> = ({ ref, value, onSelect }) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -55,8 +62,14 @@ const CitySelect = () => {
   }, [search]);
 
   return (
-    <Select>
-      <SelectTrigger>
+    <Select
+      value={value}
+      onValueChange={(value) => {
+        const selectedCity = cities.find((c) => c.id === value);
+        onSelect(selectedCity);
+      }}
+    >
+      <SelectTrigger ref={ref}>
         <SelectValue placeholder="Selecione uma cidade"/>
       </SelectTrigger>
       <SelectContent>
