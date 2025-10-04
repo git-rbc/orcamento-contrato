@@ -127,7 +127,7 @@ const AVAILABLE_MENUS: MenuItem[] = [
         slug: 'schedule-vendor',
         href: '/dashboard/agendamento/pre-vendedores',
         icon: 'SquareUserRound',
-        description: 'Vendedores disponíveis para agendamentos'
+        description: 'Pré-vendedores disponíveis para agendamentos'
       },
       {
         title: 'Cidades',
