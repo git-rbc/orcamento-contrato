@@ -36,6 +36,7 @@ import {
   List,
   CalendarDays,
   Briefcase,
+  Map,
   MapPin
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
@@ -125,8 +126,15 @@ const AVAILABLE_MENUS: MenuItem[] = [
         title: 'Cidades',
         slug: 'schedule-city',
         href: '/dashboard/agendamento/cidades',
-        icon: 'MapPin',
+        icon: 'Map',
         description: 'Cadastro de cidades'
+      },
+      {
+        title: 'Locais da Cidade',
+        slug: 'schedule-cityPlace',
+        href: '/dashboard/agendamento/locais-cidades',
+        icon: 'MapPin',
+        description: 'Cadastro de Locais'
       }
     ]
   },
@@ -297,6 +305,7 @@ const iconMap: Record<string, any> = {
   List,
   CalendarDays,
   Briefcase,
+  Map,
   MapPin,
 };
 
@@ -392,10 +401,10 @@ function MenuItemComponent({
                     }`}
                     title={child.description}
                   >
-                                         {(() => {
-                       const ChildIcon = iconMap[child.icon] || Settings;
-                       return <ChildIcon className="h-4 w-4 flex-shrink-0" />;
-                     })()}
+                  {(() => {
+                    const ChildIcon = iconMap[child.icon] || Settings;
+                    return <ChildIcon className="h-4 w-4 flex-shrink-0" />;
+                  })()}
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium">{child.title}</span>
                     </div>
