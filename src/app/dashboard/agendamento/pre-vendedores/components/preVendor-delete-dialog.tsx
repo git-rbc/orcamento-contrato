@@ -9,14 +9,14 @@ import { DialogClose } from "@radix-ui/react-dialog";
 import { Trash } from "lucide-react";
 
 export function PreVendorDeleteDialog({
-    prevendor
+    preVendor
 } : {
-    prevendor: PreVendor;
+    preVendor: PreVendor;
 }) {
     const [open, setOpen] = useState(false);
 
     const handleDelete = async () => {
-        const { error } = await deletePreVendor({ id: prevendor.id });
+        const { error } = await deletePreVendor({ id: preVendor.id });
 
         if (!error) {
             toast.success("Pré-vendedor removido com sucesso!");

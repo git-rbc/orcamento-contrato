@@ -12,9 +12,9 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 export function PreVendorDialog({
-    prevendor
+    preVendor
 } : {
-    prevendor?: PreVendor
+    preVendor?: PreVendor
 }) {
     const [open, setOpen] = useState(false);
 
@@ -26,7 +26,7 @@ export function PreVendorDialog({
     const form = useForm<formSchemaType>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name: prevendor?.name ?? "",
+            name: preVendor?.name ?? "",
         }
     });
 
@@ -35,8 +35,8 @@ export function PreVendorDialog({
         let shouldReset = true;
         let message = "Pré-vendedor criado com sucesso!";
 
-        if (prevendor?.id) {
-            handler = updatePreVendor({ name, id: prevendor.id});
+        if (preVendor?.id) {
+            handler = updatePreVendor({ name, id: preVendor.id});
             shouldReset = false;
             message = "Pré-vendedor atualizado com sucesso!";
         }
@@ -57,16 +57,16 @@ export function PreVendorDialog({
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger>
                 <Button>
-                    {prevendor ? "Atualizar" : "Criar"}
+                    {preVendor ? "Atualizar" : "Criar"}
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>
-                        {prevendor ? "Atualizar" : "Criar"} Pré-vendedor
+                        {preVendor ? "Atualizar" : "Criar"} Pré-vendedor
                     </DialogTitle>
                     <DialogDescription>
-                        {prevendor ? "Atualize as informações do Pré-vendedor" : " Crie um novo Pré-vendedor"} para utilizar nos agendamentos
+                        {preVendor ? "Atualize as informações do Pré-vendedor" : " Crie um novo Pré-vendedor"} para utilizar nos agendamentos
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -86,7 +86,7 @@ export function PreVendorDialog({
                         />
                         <DialogFooter>
                             <Button type="submit">
-                                {prevendor ? "Salvar" : "Criar"}
+                                {preVendor ? "Salvar" : "Criar"}
                             </Button>
                         </DialogFooter>
                     </form>

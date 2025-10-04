@@ -45,8 +45,8 @@ export default async function PreVendorPage(props: {
                             <TableRow key={preVendor.id}>
                                 <TableCell>{preVendor.name}</TableCell>
                                 <TableCell align="right" className="space-x-2">
-                                    <PreVendorDialog prevendor={preVendor}/>
-                                    <PreVendorDeleteDialog prevendor={preVendor}/>
+                                    <PreVendorDialog preVendor={preVendor}/>
+                                    <PreVendorDeleteDialog preVendor={preVendor}/>
                                 </TableCell>
                             </TableRow>
                         ))}
