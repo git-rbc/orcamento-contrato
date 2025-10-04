@@ -15,7 +15,7 @@ export async function getPreVendor(props: {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    let query = supabase.from('preVendor').select("*", { count: "exact" });
+    let query = supabase.from("preVendor").select("*", { count: "exact" });
 
     if (search) {
         query = query.ilike("name", `%${search}%`);
