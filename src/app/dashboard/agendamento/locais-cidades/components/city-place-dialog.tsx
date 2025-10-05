@@ -62,7 +62,7 @@ export function CityPlaceDialog({
     
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger>
+            <DialogTrigger asChild>
                 <Button>
                     {cityPlace ? "Atualizar" : "Criar"}
                 </Button>
