@@ -31,25 +31,20 @@ export function CityDialog({
     });
 
     const onSubmit = async({ name }: formSchemaType) =>{
-        let handler = createCity({name});
-        let shouldReset = true;
-        let message = "Cidade criado com Sucesso!";
-
-        if (city?.id){
-            handler = updateCity({ name, id: city.id });
-            shouldReset = false;
-            message = "Cidade atualizado com sucesso!";
-        }
-
-        const { error } = await handler;
-
-        if(!error){
-            if ( shouldReset) form.reset();
-            toast.success(message);
+        const { error } = city?.id
+            ? await updateCity({ name, id: city.id })
+            : await createCity({ name });
+    
+        if (!error) {
+            if (!city?.id) form.reset();
+            toast.success(city?.id
+            ? "Cidade atualizado com sucesso!"
+            : "Cidade criado com sucesso!"
+            );
             setOpen(false);
-            return
+            return;
         }
-
+        
         toast.error(error.message);
     }
 

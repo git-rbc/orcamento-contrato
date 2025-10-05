@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { createVendor, updateVendor } from "../utils/actions";
 import { useState } from "react";
 import { toast } from "sonner";
+import { PostgrestError } from "@supabase/supabase-js";
 
 export function VendorDialog({
   vendor
@@ -31,21 +32,16 @@ export function VendorDialog({
   });
 
   const onSubmit = async ({ name }: formSchemaType) => {
-    let handler = createVendor({ name });
-    let shouldReset = true;
-    let message = "Vendedor criado com sucesso!";
-
-    if (vendor?.id) {
-      handler = updateVendor({ name, id: vendor.id });
-      shouldReset = false;
-      message = "Vendedor atualizado com sucesso!";
-    }
-
-    const { error } = await handler;
+    const { error } = vendor?.id
+      ? await updateVendor({ name, id: vendor.id })
+      : await createVendor({ name });
 
     if (!error) {
-      if (shouldReset) form.reset();
-      toast.success(message);
+      if (!vendor?.id) form.reset();
+      toast.success(vendor?.id
+        ? "Vendedor atualizado com sucesso!"
+        : "Vendedor criado com sucesso!"
+      );
       setOpen(false);
       return;
     }

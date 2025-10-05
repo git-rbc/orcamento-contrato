@@ -38,21 +38,16 @@ export function CityPlaceDialog({
     });
 
     const onSubmit = async ({ name, cityId, color }: formSchemaType) => {
-        let handler = createCityPlace({ name, cityId, color });
-        let shouldReset = true;
-        let message = "Local criado com sucesso!";
-
-        if (cityPlace?.id) {
-            handler = updateCityPlace({ name, id: cityPlace.id, cityId, color });
-            shouldReset = false;
-            message = "Local atualizado com sucesso!";
-        }
-
-        const { error } = await handler;
+        const { error } = cityPlace?.id
+            ? await updateCityPlace({ name, id: cityPlace.id, cityId, color })
+            : await createCityPlace({ name, cityId, color });
 
         if (!error) {
-            if (shouldReset) form.reset();
-            toast.success(message);
+            if (!cityPlace?.id) form.reset();
+            toast.success(cityPlace?.id
+            ? "Local atualizado com sucesso!"
+            : "Local criado com sucesso!"
+            );
             setOpen(false);
             return;
         }
