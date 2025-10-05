@@ -4,6 +4,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { VendorDialog } from "./components/vendor-dialog";
 import { VendorDeleteDialog } from "./components/vendor-delete-dialog";
+import { VendorAvailabilityDialog } from "./components/vendor-availability-dialog";
 
 export default async function VendorPage(props: {
   searchParams?: Promise<{
@@ -44,9 +45,12 @@ export default async function VendorPage(props: {
             {data.map((vendor) => (
               <TableRow key={vendor.id}>
                 <TableCell>{vendor.name}</TableCell>
-                <TableCell align="right" className="space-x-2">
-                  <VendorDialog vendor={vendor}/>
-                  <VendorDeleteDialog vendor={vendor}/>
+                <TableCell align="right">
+                  <div className="inline-flex space-x-2">
+                    <VendorAvailabilityDialog vendor={vendor}/>
+                    <VendorDialog vendor={vendor}/>
+                    <VendorDeleteDialog vendor={vendor}/>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

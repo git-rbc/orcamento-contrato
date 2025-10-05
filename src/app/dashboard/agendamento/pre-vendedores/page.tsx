@@ -2,8 +2,8 @@ import { getPreVendor } from "./utils/actions"
 import { PaginationInput } from "@/components/ui/pagination-input";
 import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { PreVendorDialog } from "./components/preVendor-dialog"; 
-import { PreVendorDeleteDialog } from "./components/preVendor-delete-dialog";
+import { PreVendorDialog } from "./components/pre-vendor-dialog"; 
+import { PreVendorDeleteDialog } from "./components/pre-vendor-delete-dialog";
 
 export default async function PreVendorPage(props: {
     searchParams?: Promise<{

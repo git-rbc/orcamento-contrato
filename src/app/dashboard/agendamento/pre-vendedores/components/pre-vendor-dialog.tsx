@@ -55,7 +55,7 @@ export function PreVendorDialog({
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger>
+            <DialogTrigger asChild>
                 <Button>
                     {preVendor ? "Atualizar" : "Criar"}
                 </Button>
