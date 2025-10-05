@@ -55,7 +55,7 @@ export function VendorDialog({
   
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button>
           {vendor ? "Atualizar" : "Criar"}
         </Button>
