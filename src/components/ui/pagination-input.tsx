@@ -22,7 +22,7 @@ export function PaginationInput({
           <PaginationPrevious href={parsedHref(page > 1 ? page - 1 : 1)} />
         </PaginationItem>
         {Array.from({ length: pageTotal }).map((_, i) => (
-          <PaginationItem>
+          <PaginationItem key={i}>
             <PaginationLink href={parsedHref(i + 1)} isActive={page === i + 1}>
               {i + 1}
             </PaginationLink>

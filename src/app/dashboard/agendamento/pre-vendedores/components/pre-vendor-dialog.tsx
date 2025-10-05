@@ -1,53 +1,53 @@
 "use client";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { City } from "../types/city";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { PreVendor } from "../types/preVendor";
 import { Button } from "@/components/ui/button";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { createCity, updateCity } from "../utils/actions";
+import { createPreVendor, updatePreVendor } from "../utils/actions";
 import { useState } from "react";
 import { toast } from "sonner";
 
-export function CityDialog({
-    city
+export function PreVendorDialog({
+    preVendor
 } : {
-    city?: City;
-}){
+    preVendor?: PreVendor
+}) {
     const [open, setOpen] = useState(false);
 
     const formSchema = z.object({
-        name: z.string({ message: "Insira uma cidade"}).nonempty({ message: "Insira uma cidade"}),
+        name: z.string({message: "Insira um nome"}).nonempty({ message: "Insira um nome"}),
     });
     type formSchemaType = z.infer<typeof formSchema>;
 
     const form = useForm<formSchemaType>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            name:city?.name ?? "",
+            name: preVendor?.name ?? "",
         }
     });
 
-    const onSubmit = async({ name }: formSchemaType) =>{
-        let handler = createCity({name});
+    const onSubmit = async ({ name }: formSchemaType) =>{
+        let handler = createPreVendor({ name });
         let shouldReset = true;
-        let message = "Cidade criado com Sucesso!";
+        let message = "Pré-vendedor criado com sucesso!";
 
-        if (city?.id){
-            handler = updateCity({ name, id: city.id });
+        if (preVendor?.id) {
+            handler = updatePreVendor({ name, id: preVendor.id});
             shouldReset = false;
-            message = "Cidade atualizado com sucesso!";
+            message = "Pré-vendedor atualizado com sucesso!";
         }
 
         const { error } = await handler;
 
-        if(!error){
-            if ( shouldReset) form.reset();
+        if (!error) {
+            if (shouldReset) form.reset();
             toast.success(message);
             setOpen(false);
-            return
+            return;
         }
 
         toast.error(error.message);
@@ -57,16 +57,16 @@ export function CityDialog({
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button>
-                    {city ? "Atualizar" : "Criar"}
+                    {preVendor ? "Atualizar" : "Criar"}
                 </Button>
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>
-                        {city ? "Atualizar" : "Criar"} Cidade
+                        {preVendor ? "Atualizar" : "Criar"} Pré-vendedor
                     </DialogTitle>
                     <DialogDescription>
-                        {city ? "Atualize as informações da cidade" : "Crie uma nova cidade"} para utilizar nos agendamentos
+                        {preVendor ? "Atualize as informações do Pré-vendedor" : " Crie um novo Pré-vendedor"} para utilizar nos agendamentos
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -74,19 +74,19 @@ export function CityDialog({
                         <FormField
                             control={form.control}
                             name="name"
-                            render={({field}) => (
+                            render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Nome</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Ex. Itapema"{...field}/>
+                                        <Input placeholder="Ex. João Pedro" {...field}/>
                                     </FormControl>
                                     <FormMessage/>
                                 </FormItem>
-                            )}
+                        )}
                         />
                         <DialogFooter>
                             <Button type="submit">
-                                {city ? "Salvar" : "Criar"}
+                                {preVendor ? "Salvar" : "Criar"}
                             </Button>
                         </DialogFooter>
                     </form>

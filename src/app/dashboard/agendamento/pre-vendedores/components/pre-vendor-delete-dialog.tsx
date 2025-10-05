@@ -1,33 +1,33 @@
 "use client";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { City } from "../types/city";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { PreVendor } from "../types/preVendor";
 import { Button } from "@/components/ui/button";
-import { deleteCity } from "../utils/actions";
+import { deletePreVendor } from "../utils/actions";
 import { useState } from "react";
 import { toast } from "sonner";
 import { DialogClose } from "@radix-ui/react-dialog";
 import { Trash } from "lucide-react";
 
-export function CityDeleteDialog({
-    city
+export function PreVendorDeleteDialog({
+    preVendor
 } : {
-    city: City;
+    preVendor: PreVendor;
 }) {
     const [open, setOpen] = useState(false);
 
     const handleDelete = async () => {
-        const { error } = await deleteCity({ id: city.id});
+        const { error } = await deletePreVendor({ id: preVendor.id });
 
-        if(!error){
-            toast.success("Cidade removida com sucesso!");
+        if (!error) {
+            toast.success("Pré-vendedor removido com sucesso!");
             setOpen(false);
             return;
         }
 
         toast.error(error.message);
     }
-
-    return(
+    
+    return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button variant="destructive" size="icon">
@@ -40,7 +40,7 @@ export function CityDeleteDialog({
                         Você tem certeza disso?
                     </DialogTitle>
                     <DialogDescription>
-                        Está ação não pode ser revertida e irá remover a cidade permanentemente do sistema.
+                        Está ação não pode ser revertida e irá remover o pré-vendedor permanentemente do sistema.
                     </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>

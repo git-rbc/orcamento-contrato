@@ -29,7 +29,7 @@ export function VendorDeleteDialog({
   
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
+      <DialogTrigger asChild>
         <Button variant="destructive" size="icon">
           <Trash/>
         </Button>

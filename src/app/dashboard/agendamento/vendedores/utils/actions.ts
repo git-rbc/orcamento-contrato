@@ -2,6 +2,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { Vendor } from "../types/vendor";
 import { revalidatePath } from "next/cache";
+import { randomUUID } from "crypto";
 
 export async function getVendor(props: {
   search?: string;
@@ -63,6 +64,41 @@ export async function deleteVendor(props: {
   const { error } = await supabase.from('vendor').delete().eq('id', id);
 
   if (!error) revalidatePath("/dashboard/agendamento/vendedores");
+
+  return { error };
+}
+
+export async function getVendorAvailability(props: {
+  vendorId : string;
+  startDate: Date;
+  endDate: Date;
+}) {
+  const { vendorId, startDate, endDate } = props;
+  if (!startDate && !endDate) return { data: [] };
+
+  const supabase = await createServerSupabaseClient(); 
+
+  const { data, error } = await supabase
+    .from("availability")
+    .select("*")
+    .eq("vendorId", vendorId)
+    .gte("date", startDate.toDateString())
+    .lte("date", endDate.toDateString());
+
+  return { data, error };
+}
+
+export async function upsertVendorAvailability(props: any[]) {
+  const supabase = await createServerSupabaseClient(); 
+
+  const data = props.map((p) => ({
+    ...p,
+    id: p.id ?? randomUUID(),
+    createdAt: p.createdAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }))
+
+  const { error } = await supabase.from("availability").upsert(data);
 
   return { error };
 }
