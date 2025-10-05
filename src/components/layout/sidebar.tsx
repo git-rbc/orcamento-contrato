@@ -91,7 +91,7 @@ const AVAILABLE_MENUS: MenuItem[] = [
       {
         title: 'Disponibilidade',
         slug: 'agendamento-disponibilidade',
-        href: '/dashboard/agendamento/disponibilidade',
+        href: '/dashboard/agendamento/disponibilidade-old',
         icon: 'Clock',
         description: 'Configurar horários disponíveis'
       },
@@ -117,6 +117,13 @@ const AVAILABLE_MENUS: MenuItem[] = [
         description: 'Rankings (Geral, Online, Presencial, 10 dias)'
       },
       {
+        title: 'Disponibilidade',
+        slug: 'schedule-availability',
+        href: '/dashboard/agendamento/disponibilidade',
+        icon: 'Clock',
+        description: 'Disponibilidade dos vendedores por cidade'
+      },
+      {
         title: 'Vendedores',
         slug: 'schedule-vendor',
         href: '/dashboard/agendamento/vendedores',
@@ -125,7 +132,7 @@ const AVAILABLE_MENUS: MenuItem[] = [
       },
       {
         title: 'Pré-vendedores',
-        slug: 'schedule-vendor',
+        slug: 'schedule-pre-vendor',
         href: '/dashboard/agendamento/pre-vendedores',
         icon: 'SquareUserRound',
         description: 'Pré-vendedores disponíveis para agendamentos'
@@ -139,7 +146,7 @@ const AVAILABLE_MENUS: MenuItem[] = [
       },
       {
         title: 'Locais da Cidade',
-        slug: 'schedule-cityPlace',
+        slug: 'schedule-city-place',
         href: '/dashboard/agendamento/locais-cidades',
         icon: 'MapPin',
         description: 'Cadastro de Locais'

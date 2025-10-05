@@ -2,8 +2,8 @@ import { getCityPlace } from "./utils/actions"
 import { PaginationInput } from "@/components/ui/pagination-input";
 import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CityPlaceDialog } from "./components/cityPlace-dialog";
-import { CityPlaceDeleteDialog } from "./components/cityPlace-delete-dialog";
+import { CityPlaceDialog } from "./components/city-place-dialog";
+import { CityPlaceDeleteDialog } from "./components/city-place-delete-dialog";
 
 export default async function CityPlacePage(props: {
     searchParams?: Promise<{
