@@ -31,14 +31,18 @@ export function PreVendorDialog({
     });
 
     const onSubmit = async ({ name }: formSchemaType) =>{
-        let handler = createPreVendor({ name });
+        let handler;
         let shouldReset = true;
-        let message = "Pré-vendedor criado com sucesso!";
+        let message;
 
         if (preVendor?.id) {
             handler = updatePreVendor({ name, id: preVendor.id});
             shouldReset = false;
             message = "Pré-vendedor atualizado com sucesso!";
+        }
+        else{
+            handler = createPreVendor({ name });
+            message = "Pré-vendedor criado com sucesso!";
         }
 
         const { error } = await handler;

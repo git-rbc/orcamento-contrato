@@ -40,6 +40,10 @@ export function VendorDialog({
       shouldReset = false;
       message = "Vendedor atualizado com sucesso!";
     }
+    else{
+      handler = createVendor({ name });
+      message = "Vendedor criado com sucesso!";
+    }
 
     const { error } = await handler;
 

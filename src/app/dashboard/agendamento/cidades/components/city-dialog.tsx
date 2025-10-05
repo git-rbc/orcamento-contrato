@@ -31,14 +31,18 @@ export function CityDialog({
     });
 
     const onSubmit = async({ name }: formSchemaType) =>{
-        let handler = createCity({name});
+        let handler;
         let shouldReset = true;
-        let message = "Cidade criado com Sucesso!";
+        let message;
 
         if (city?.id){
             handler = updateCity({ name, id: city.id });
             shouldReset = false;
             message = "Cidade atualizado com sucesso!";
+        }
+        else{
+            handler = createCity({name});
+            message = "Cidade criado com Sucesso!";
         }
 
         const { error } = await handler;

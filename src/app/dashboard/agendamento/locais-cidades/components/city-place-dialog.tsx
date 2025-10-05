@@ -38,14 +38,18 @@ export function CityPlaceDialog({
     });
 
     const onSubmit = async ({ name, cityId, color }: formSchemaType) => {
-        let handler = createCityPlace({ name, cityId, color });
+        let handler;
         let shouldReset = true;
-        let message = "Local criado com sucesso!";
+        let message;
 
         if (cityPlace?.id) {
             handler = updateCityPlace({ name, id: cityPlace.id, cityId, color });
             shouldReset = false;
             message = "Local atualizado com sucesso!";
+        }
+        else{
+            handler = createCityPlace({ name, cityId, color });
+            message = "Local criado com sucesso!";
         }
 
         const { error } = await handler;
