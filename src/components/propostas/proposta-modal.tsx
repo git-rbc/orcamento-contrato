@@ -973,8 +973,8 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
       const propostaData = {
         codigoReuniao,
         clienteId,
-        dataContratacao: dataContratacao ? dataContratacao.toISOString().split('T')[0] : undefined,
-        dataRealizacao: dataEvento ? dataEvento.toISOString().split('T')[0] : undefined,
+        dataContratacao: dataContratacao ? dataContratacao.toISOString().split('T')[0] : null,
+        dataRealizacao: dataEvento ? dataEvento.toISOString().split('T')[0] : null,
         diaSemana,
         espacoId,
         layoutId,

@@ -81,9 +81,9 @@ export function useCalculoServicos({
   // Calcular valores dos produtos por campo
   const calcularValoresProdutos = async () => {
     const todosProdutos = [...alimentacaoItens, ...bebidasItens, ...itensExtras, ...servicosItens];
-    
+
     // Filtrar apenas produtos com ID válido
-    const produtosComId = todosProdutos.filter(item => 
+    const produtosComId = todosProdutos.filter(item =>
       item.tipoItem === 'produto' && item.produtoId && item.produtoId !== null
     );
 

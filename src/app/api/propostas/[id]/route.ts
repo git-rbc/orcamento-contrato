@@ -182,8 +182,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     if (body.codigoReuniao !== undefined) updateData.codigo_reuniao = body.codigoReuniao || null;
     if (body.clienteId !== undefined) updateData.cliente_id = body.clienteId;
-    if (body.dataContratacao !== undefined) updateData.data_contratacao = body.dataContratacao;
-    if (body.dataRealizacao !== undefined) updateData.data_realizacao = body.dataRealizacao;
+    if (body.dataContratacao !== undefined) updateData.data_contratacao = body.dataContratacao || null;
+    if (body.dataRealizacao !== undefined) updateData.data_realizacao = body.dataRealizacao || null;
     if (body.diaSemana !== undefined) updateData.dia_semana = body.diaSemana;
     if (body.espacoId !== undefined) updateData.espaco_id = body.espacoId;
     if (body.layoutId !== undefined) updateData.layout_id = body.layoutId;
@@ -215,7 +215,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       if (cp.modeloPagamento !== undefined) updateData.modelo_pagamento = cp.modeloPagamento;
       if (cp.reajuste !== undefined) updateData.reajuste = cp.reajuste;
       if (cp.juros !== undefined) updateData.juros = cp.juros;
-      if (cp.dataEntrada !== undefined) updateData.data_entrada = cp.dataEntrada;
+      if (cp.dataEntrada !== undefined) updateData.data_entrada = cp.dataEntrada || null;
       if (cp.formaPagamentoEntrada !== undefined) updateData.forma_pagamento_entrada = cp.formaPagamentoEntrada;
       if (cp.statusPagamentoEntrada !== undefined) updateData.status_pagamento_entrada = cp.statusPagamentoEntrada;
       if (cp.qtdMeses !== undefined) updateData.qtd_meses = cp.qtdMeses;

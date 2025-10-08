@@ -595,7 +595,7 @@ export function EditServicoModal({ isOpen, onClose, servico, onSave }: EditServi
                   />
                   <div>
                     <Label htmlFor="para_reajuste" className="font-medium">
-                      Para REAJUSTE
+                      Reajuste
                     </Label>
                     <p className="text-sm text-muted-foreground">
                       Quando marcado, a taxa de serviço será calculada também sobre produtos marcados para reajuste
