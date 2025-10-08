@@ -188,6 +188,7 @@ export function useCalculoServicos({
   const calcularServicoIndividual = async (
     servicoItem: LinhaItem,
     valoresProdutos: { produtosCampoTaxa: number; produtosCampoReajuste: number },
+    valorTaxaServico: number = 0,
     tentativas = 3
   ): Promise<CalculoResult> => {
     if (!servicoItem.servicoTemplateId || !servicoItem.calculoAutomatico) {
@@ -208,6 +209,7 @@ export function useCalculoServicos({
             diaSemana,
             dataContratacao: dataContratacao?.toISOString(),
             dataRealizacao: dataRealizacao?.toISOString(),
+            valorTaxaServico,
             ...valoresProdutos
           }),
         });
@@ -298,11 +300,59 @@ export function useCalculoServicos({
     const novosErros = new Map<string, string>();
     const servicosAtualizados = [...servicosItens];
     let houveAlteracao = false;
+    let valorTaxaServicoCalculado = 0;
 
-    // Calcular cada serviço
-    for (const servico of servicosAutomaticos) {
+    // Identificar serviços por tipo
+    const servicoTaxa = servicosAutomaticos.find(s =>
+      s.servicoTemplateId === '78b86ebc-1e7f-4d1c-bd4a-291eb52175ee' || // ID da Taxa de Serviço
+      s.descricao?.includes('Taxa de Serviço') ||
+      s.descricao?.includes('Equipe')
+    );
+
+    const servicoReajuste = servicosAutomaticos.find(s =>
+      s.tipoCalculo === 'reajuste_temporal' ||
+      s.descricao?.includes('Reajuste')
+    );
+
+    // Calcular Taxa de Serviço primeiro (se existir)
+    if (servicoTaxa) {
       try {
-        const resultado = await calcularServicoIndividual(servico, valoresProdutos);
+        const resultado = await calcularServicoIndividual(servicoTaxa, valoresProdutos, 0);
+        valorTaxaServicoCalculado = resultado.valorCalculado;
+
+        const index = servicosAtualizados.findIndex(s => s.id === servicoTaxa.id);
+        if (index !== -1) {
+          const itemAtual = servicosAtualizados[index];
+          const mesmoValor = itemAtual.valorUnitario === resultado.valorCalculado;
+          const mesmosParametros = JSON.stringify(itemAtual.parametrosCalculo || {}) === JSON.stringify(resultado.parametrosUtilizados || {});
+
+          if (!mesmoValor || !mesmosParametros) {
+            servicosAtualizados[index] = {
+              ...itemAtual,
+              valorUnitario: resultado.valorCalculado,
+              parametrosCalculo: resultado.parametrosUtilizados
+            };
+            houveAlteracao = true;
+          }
+        }
+
+        if (resultado.erro) {
+          novosErros.set(servicoTaxa.id, resultado.erro);
+        }
+      } catch (error) {
+        novosErros.set(servicoTaxa.id, 'Erro ao calcular Taxa de Serviço');
+      }
+    }
+
+    // Calcular outros serviços (incluindo Reajuste com valor da Taxa)
+    for (const servico of servicosAutomaticos) {
+      // Pular Taxa de Serviço (já calculada)
+      if (servicoTaxa && servico.id === servicoTaxa.id) continue;
+
+      try {
+        // Se for Reajuste, passar o valor da Taxa de Serviço
+        const valorTaxa = servico === servicoReajuste ? valorTaxaServicoCalculado : 0;
+        const resultado = await calcularServicoIndividual(servico, valoresProdutos, valorTaxa);
 
         const index = servicosAtualizados.findIndex(s => s.id === servico.id);
         if (index !== -1) {

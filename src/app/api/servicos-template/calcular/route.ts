@@ -14,6 +14,7 @@ interface CalcularServicoRequest {
   valorProdutos?: number;
   produtosCampoTaxa?: number; // Valor dos produtos com tem_taxa=true
   produtosCampoReajuste?: number; // Valor dos produtos com reajuste=true
+  valorTaxaServico?: number; // Valor calculado da Taxa de Serviço (para incluir no Reajuste)
   dataContratacao?: string;
   dataRealizacao?: string;
 }
@@ -112,12 +113,9 @@ function calcularPercentualProdutos(servico: any, dados: CalcularServicoRequest)
 
   // Determinar qual campo usar baseado no serviço
   if (campoParam.valor === 'tem_taxa') {
-    // Se para_reajuste for true, somar também produtos com reajuste
-    if (servico.para_reajuste === true) {
-      valorBase = (dados.produtosCampoTaxa || 0) + (dados.produtosCampoReajuste || 0);
-    } else {
-      valorBase = dados.produtosCampoTaxa || 0;
-    }
+    // Taxa de serviço sempre calcula apenas sobre produtos com tem_taxa
+    // O campo para_reajuste indica apenas que este serviço será considerado pelo reajuste
+    valorBase = dados.produtosCampoTaxa || 0;
   } else if (campoParam.valor === 'reajuste') {
     valorBase = dados.produtosCampoReajuste || 0;
   }
@@ -229,8 +227,10 @@ function calcularReajusteTemporal(servico: any, dados: CalcularServicoRequest): 
     percentual = parseFloat(servico.parametros?.find((p: any) => p.chave === 'faixa_121_132')?.valor) || 0;
   }
 
-  // Obter valor base dos produtos com reajuste
-  const valorBase = dados.produtosCampoReajuste || 0;
+  // Obter valor base: produtos com reajuste + Taxa de Serviço (se para_reajuste = true)
+  const valorProdutosReajuste = dados.produtosCampoReajuste || 0;
+  const valorTaxaServico = dados.valorTaxaServico || 0;
+  const valorBase = valorProdutosReajuste + valorTaxaServico;
 
   // Calcular valor do reajuste
   return valorBase * (percentual / 100);
@@ -247,14 +247,9 @@ function extractParametrosUtilizados(servico: any, dados: CalcularServicoRequest
 
       // Determinar valor base conforme lógica de cálculo
       if (servico.parametros?.find((p: any) => p.chave === 'campo_produto')?.valor === 'tem_taxa') {
-        if (servico.para_reajuste === true) {
-          parametros.valor_base = (dados.produtosCampoTaxa || 0) + (dados.produtosCampoReajuste || 0);
-          parametros.valor_base_taxa = dados.produtosCampoTaxa;
-          parametros.valor_base_reajuste = dados.produtosCampoReajuste;
-        } else {
-          parametros.valor_base = dados.produtosCampoTaxa;
-          parametros.valor_base_taxa = dados.produtosCampoTaxa;
-        }
+        // Taxa de serviço sempre usa apenas produtos com tem_taxa
+        parametros.valor_base = dados.produtosCampoTaxa || 0;
+        parametros.valor_base_taxa = dados.produtosCampoTaxa;
       } else {
         parametros.valor_base = dados.produtosCampoReajuste;
       }
@@ -279,7 +274,9 @@ function extractParametrosUtilizados(servico: any, dados: CalcularServicoRequest
     case 'reajuste_temporal':
       parametros.data_contratacao = dados.dataContratacao;
       parametros.data_realizacao = dados.dataRealizacao;
-      parametros.valor_base = dados.produtosCampoReajuste;
+      parametros.valor_base_produtos = dados.produtosCampoReajuste;
+      parametros.valor_taxa_servico = dados.valorTaxaServico || 0;
+      parametros.valor_base_total = (dados.produtosCampoReajuste || 0) + (dados.valorTaxaServico || 0);
       
       // Calcular meses e percentual usado
       if (dados.dataContratacao && dados.dataRealizacao) {
