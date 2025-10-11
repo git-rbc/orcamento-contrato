@@ -6,17 +6,17 @@ import { Input } from "./ui/input";
 import useSWRInfinite from "swr/infinite";
 import { RefCallBack } from "react-hook-form";
 
-type VendorSelectProps = {
+type PreVendorSelectProps = {
   ref?: RefCallBack;
   value: string;
-  onSelect: (vendor: any) => void;
+  onSelect: (preVendor: any) => void;
 }
 
-const VendorSelect: FC<VendorSelectProps> = ({ ref, value, onSelect }) => {
+const PreVendorSelect: FC<PreVendorSelectProps> = ({ ref, value, onSelect }) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const getVendor = async (props: {
+  const getPreVendor = async (props: {
     search: string;
     page: number;
   }) => {
@@ -27,7 +27,7 @@ const VendorSelect: FC<VendorSelectProps> = ({ ref, value, onSelect }) => {
     const from = (page - 1) * limit;
     const to = from + limit - 1;
   
-    let query = supabase.from("users").select("*", { count: "exact" }).eq("role_id", "fd142386-9d40-429f-bb25-c4f0813fe52a");
+    let query = supabase.from("users").select("*", { count: "exact" }).eq("role_id", "581743e4-6726-4ff4-803d-e1ae36491434");
   
     if (search) query = query.ilike("nome", `%${search}%`);
   
@@ -39,12 +39,12 @@ const VendorSelect: FC<VendorSelectProps> = ({ ref, value, onSelect }) => {
   }
 
   const { data, error, isLoading, size, setSize } = useSWRInfinite(
-    (index) => ["vendor", debouncedSearch, index + 1],
-    ([_, search, page]) => getVendor({ search, page }),
+    (index) => ["pre-vendor", debouncedSearch, index + 1],
+    ([_, search, page]) => getPreVendor({ search, page }),
   );
 
   const pageTotal = useMemo(() => data?.[size - 1]?.pageTotal ?? 1, [data, size]);
-  const vendors = data?.flatMap((d) => d.data) ?? [];
+  const preVendors = data?.flatMap((d) => d.data) ?? [];
 
   const handleScroll = useCallback((ev: UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = ev.currentTarget;
@@ -62,12 +62,12 @@ const VendorSelect: FC<VendorSelectProps> = ({ ref, value, onSelect }) => {
     <Select
       value={value}
       onValueChange={(value) => {
-        const selectedVendor = vendors.find((c) => c.id === value);
-        onSelect(selectedVendor);
+        const selectedPreVendor = preVendors.find((c) => c.id === value);
+        onSelect(selectedPreVendor);
       }}
     >
       <SelectTrigger ref={ref}>
-        <SelectValue placeholder="Selecione um vendedor"/>
+        <SelectValue placeholder="Selecione um pré-vendedor"/>
       </SelectTrigger>
       <SelectContent>
         <Input
@@ -78,7 +78,7 @@ const VendorSelect: FC<VendorSelectProps> = ({ ref, value, onSelect }) => {
           onKeyDown={(ev) => ev.stopPropagation()}
         />
         <div onScroll={handleScroll} className="max-h-64 overflow-y-auto">
-          {!isLoading && vendors.length === 0 && (
+          {!isLoading && preVendors.length === 0 && (
             error ? (
               <p className="text-center text-sm text-destructive p-1">{error.message}</p>
             ) : (
@@ -86,8 +86,8 @@ const VendorSelect: FC<VendorSelectProps> = ({ ref, value, onSelect }) => {
             )
           )}
 
-          {vendors.map((vendor: any) => (
-            <SelectItem key={vendor.id} value={vendor.id}>{vendor.nome}</SelectItem>
+          {preVendors.map((preVendor: any) => (
+            <SelectItem key={preVendor.id} value={preVendor.id}>{preVendor.nome}</SelectItem>
           ))}
 
           {isLoading && <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"/>}
@@ -97,4 +97,4 @@ const VendorSelect: FC<VendorSelectProps> = ({ ref, value, onSelect }) => {
   )
 }
 
-export { VendorSelect };
+export { PreVendorSelect };

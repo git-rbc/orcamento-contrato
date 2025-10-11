@@ -89,7 +89,7 @@ const VendorMultiSelect: FC<VendorMultiSelectProps> = ({ value, onSelect }) => {
               ? value.length > 1
                 ? `${value.length} Selecionados`
                 : value[0]?.nome
-              : "Selecione fornecedores..."}
+              : "Selecione vendedores..."}
           </span>
           <ChevronDown className="h-4 w-4 opacity-50 text-muted-foreground" />
         </div>
