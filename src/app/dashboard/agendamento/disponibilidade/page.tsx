@@ -1,12 +1,36 @@
-export default function AvailabilityPage() {
-  return (
-    <div className="flex flex-col gap-4 w-full">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-        <h2 className="text-2xl font-bold">Disponibilidade</h2>
-        <div className="flex flex-col md:flex-row items-center gap-4 md:gap-2 w-full md:w-auto">
+'use client';
 
+import { DisponibilidadeManager } from '@/components/disponibilidade/disponibilidade-manager';
+import { usePermissions } from '@/hooks/usePermissions';
+
+export default function DisponibilidadePage() {
+  const { permissions, loading } = usePermissions();
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900" />
+      </div>
+    );
+  }
+
+  if (!permissions.canManageAvailability) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Acesso Negado</h2>
+          <p className="text-muted-foreground">
+            Você não tem permissão para gerenciar disponibilidade.
+          </p>
         </div>
       </div>
-    </div>
-  )
+    );
+  }
+
+  return (
+    <DisponibilidadeManager
+      vendedorId={permissions.vendedorId} // Se for vendedor, mostra apenas sua disponibilidade
+      canEdit={permissions.canManageAvailability}
+    />
+  );
 }

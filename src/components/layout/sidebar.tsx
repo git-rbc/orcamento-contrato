@@ -91,7 +91,7 @@ const AVAILABLE_MENUS: MenuItem[] = [
       {
         title: 'Disponibilidade',
         slug: 'agendamento-disponibilidade',
-        href: '/dashboard/agendamento/disponibilidade-old',
+        href: '/dashboard/agendamento/disponibilidade',
         icon: 'Clock',
         description: 'Configurar horários disponíveis'
       },
@@ -117,40 +117,12 @@ const AVAILABLE_MENUS: MenuItem[] = [
         description: 'Rankings (Geral, Online, Presencial, 10 dias)'
       },
       {
-        title: 'Disponibilidade',
+        title: 'Disponibilidade 2',
         slug: 'schedule-availability',
-        href: '/dashboard/agendamento/disponibilidade',
+        href: '/dashboard/agendamento/disponibilidade-2',
         icon: 'Clock',
         description: 'Disponibilidade dos vendedores por cidade'
       },
-      {
-        title: 'Vendedores',
-        slug: 'schedule-vendor',
-        href: '/dashboard/agendamento/vendedores',
-        icon: 'Briefcase',
-        description: 'Vendedores disponíveis para agendamentos'
-      },
-      {
-        title: 'Pré-vendedores',
-        slug: 'schedule-pre-vendor',
-        href: '/dashboard/agendamento/pre-vendedores',
-        icon: 'SquareUserRound',
-        description: 'Pré-vendedores disponíveis para agendamentos'
-      },
-      {
-        title: 'Cidades',
-        slug: 'schedule-city',
-        href: '/dashboard/agendamento/cidades',
-        icon: 'Map',
-        description: 'Cadastro de cidades'
-      },
-      {
-        title: 'Locais da Cidade',
-        slug: 'schedule-city-place',
-        href: '/dashboard/agendamento/locais-cidades',
-        icon: 'MapPin',
-        description: 'Cadastro de Locais'
-      }
     ]
   },
   {
@@ -263,7 +235,14 @@ const AVAILABLE_MENUS: MenuItem[] = [
         description: 'Gestão de usuários'
       },
       {
-        title: 'Espaços de Eventos',
+        title: 'Cidades de Eventos',
+        slug: 'schedule-city',
+        href: '/dashboard/agendamento/cidades',
+        icon: 'Map',
+        description: 'Cadastro de cidades'
+      },
+      {
+        title: 'Espaços de Cidades',
         slug: 'espacos-eventos',
         href: '/dashboard/espacos-eventos',
         icon: 'Building2',
