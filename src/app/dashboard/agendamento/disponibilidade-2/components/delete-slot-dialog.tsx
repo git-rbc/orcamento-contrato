@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { deleteAvailability } from "../utils/actions";
+import { toast } from "sonner";
 
 type DeleteSlotDialogProps = {  
     open: boolean;
@@ -13,21 +14,21 @@ type DeleteSlotDialogProps = {
 
 export function DeleteSlotDialog({ open, onClose, slotId, onDeleted }: DeleteSlotDialogProps) {
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string>();
 
-    const handleDelete = async () => {  
-    try {
-            setLoading(true);
-            setError(undefined);
-            await deleteAvailability(slotId);
+    const handleDelete = async () => {
+        setLoading(true);
+        const { error } = await deleteAvailability({ id: slotId});
+        setLoading(false);
+
+        if(!error){
+            toast.success("Slot removido com sucesso!");
             onDeleted();
             onClose();
-    } catch (e: any) {
-            setError(e.message || "Erro ao excluir disponibilidade");
-    } finally {
-            setLoading(false);
+            return;
+        }
+
+        toast.error(error.message);
     }
-    };
 
     return (  
         <Dialog open={open} onOpenChange={onClose}>
@@ -38,7 +39,6 @@ export function DeleteSlotDialog({ open, onClose, slotId, onDeleted }: DeleteSlo
                 <p className="text-sm text-muted-foreground">  
                     Tem certeza que deseja excluir esta disponibilidade? Essa ação não pode ser desfeita.
                 </p>
-                {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
                 <DialogFooter className="flex justify-end gap-2 mt-4">
                     <Button variant="outline" onClick={onClose}>
                         Cancelar

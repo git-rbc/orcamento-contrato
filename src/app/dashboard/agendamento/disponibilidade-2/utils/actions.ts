@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase"
 import { Availability } from "../types/availability"
 
-export async function fetchAvailabilities(cityId: string, vendorIds: string[], startDate: Date, endDate: Date) {
+export async function fetchAvailabilities(props: {
+  cityId: string, 
+  vendorIds: string[],
+  startDate: Date,
+  endDate: Date
+}) {
+  const { cityId, vendorIds, startDate, endDate } = props;
   const supabase = createClient()
 
   const startIso = startDate.toISOString().split("T")[0]
@@ -14,12 +20,10 @@ export async function fetchAvailabilities(cityId: string, vendorIds: string[], s
     .in("vendorId", vendorIds)
     .gte("date", startIso)
     .lte("date", endIso)
-  if (error) {
-    console.error("Erro ao buscar disponibilidades:", error)
-    throw new Error("Erro ao buscar disponibilidades: " + error.message)
-  }
 
-  return data as Availability[]
+  if (error) throw new Error(error.message)
+
+  return data as Availability[];
 }
 
 export async function createAvailability(slot: Omit<Availability, "id" | "createdAt" | "updatedAt">) {
@@ -75,12 +79,14 @@ export async function createAvailability(slot: Omit<Availability, "id" | "create
   return data[0]
 }
 
-export async function deleteAvailability(id: string) {
-  const supabase = (await import("@/lib/supabase")).createClient();
+export async function deleteAvailability(props: {
+  id: string
+}) {
+  const { id } = props;
+
+  const supabase = createClient();
 
   const { error } = await supabase.from("availability").delete().eq("id", id);
 
-  if (error) throw new Error(error.message);
-
-  return true;
+  return { error };
 }
