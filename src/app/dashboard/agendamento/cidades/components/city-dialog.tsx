@@ -80,7 +80,7 @@ export function CityDialog({
                             )}
                         />
                         <DialogFooter>
-                            <Button type="submit">
+                            <Button type="submit" disabled={form.formState.isSubmitting}>
                                 {city ? "Salvar" : "Criar"}
                             </Button>
                         </DialogFooter>

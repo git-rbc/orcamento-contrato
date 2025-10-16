@@ -1,6 +1,5 @@
 "use client";
-import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { deleteAvailability } from "../utils/actions";
 import { toast } from "sonner";
@@ -12,13 +11,10 @@ type DeleteSlotDialogProps = {
     onDeleted: () => void;
 };
 
-export function DeleteSlotDialog({ open, onClose, slotId, onDeleted }: DeleteSlotDialogProps) {
-    const [loading, setLoading] = useState(false);
+export function SlotDeleteDialog({ open, onClose, slotId, onDeleted }: DeleteSlotDialogProps) {
 
     const handleDelete = async () => {
-        setLoading(true);
         const { error } = await deleteAvailability({ id: slotId});
-        setLoading(false);
 
         if(!error){
             toast.success("Slot removido com sucesso!");
@@ -32,19 +28,19 @@ export function DeleteSlotDialog({ open, onClose, slotId, onDeleted }: DeleteSlo
 
     return (  
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className="max-w-sm">
+            <DialogContent>
                 <DialogHeader>  
-                    <DialogTitle>Excluir disponibilidade</DialogTitle>
+                    <DialogTitle>Remover slot</DialogTitle>
                 </DialogHeader>
-                <p className="text-sm text-muted-foreground">  
-                    Tem certeza que deseja excluir esta disponibilidade? Essa ação não pode ser desfeita.
-                </p>
+                <DialogDescription>  
+                    Está ação não pode ser revertida e irá remover o slot permanentemente do sistema.
+                </DialogDescription>
                 <DialogFooter className="flex justify-end gap-2 mt-4">
                     <Button variant="outline" onClick={onClose}>
                         Cancelar
                     </Button>
-                    <Button variant="destructive" onClick={handleDelete} disabled={loading}>
-                        {loading ? "Excluindo..." : "Excluir"}
+                    <Button variant="destructive" onClick={handleDelete}>
+                        Remover
                     </Button>
                 </DialogFooter>
             </DialogContent>

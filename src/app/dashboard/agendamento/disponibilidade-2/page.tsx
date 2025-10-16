@@ -5,11 +5,12 @@ import { Label } from "@/components/ui/label";
 import { VendorMultiSelect } from "@/components/vendor-multi-select";
 import { useState, useMemo } from "react";
 import { fetchAvailabilities } from "./utils/actions";
-import { AddSlotDialog } from "./components/add-slot-dialog";
-import { DeleteSlotDialog } from "./components/delete-slot-dialog";
+import { SlotDialog } from "./components/slot-dialog";
+import { SlotDeleteDialog } from "./components/slot-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import useSWR from "swr";
+import { Availability } from "./types/availability";
 
 export default function AvailabilityPage() {
   const now = new Date();
@@ -19,7 +20,7 @@ export default function AvailabilityPage() {
   const [endDate, setEndDate] = useState<Date>(sevenDaysAfter);
   const [cityId, setCityId] = useState<string>();
   const [vendors, setVendors] = useState([]);
-  const [dialogData, setDialogData] = useState<{ vendorId: string; date: string } | null>(null);
+  const [dialogData, setDialogData] = useState<Availability | null>(null);
   const [deleteData, setDeleteData] = useState<{ slotId: string } | null>(null);
 
   const vendorIds = useMemo(() => {
@@ -80,7 +81,7 @@ export default function AvailabilityPage() {
                   <TableRow key={dateStr}>
                     <TableCell className="border text-right">{d.toLocaleDateString()}</TableCell>
                     {vendors.map((v: any) => {
-                      const slots = availabilities?.filter(a => a.vendorId === v.id && a.date === dateStr);
+                      const slots = availabilities?.filter(a => a.vendorId === v.id && a.date === dateStr).sort((a, b) => a.startHour.localeCompare(b.startHour));
                       return (
                         <TableCell key={v.id} className="border align-center">
                           <div className="flex flex-row items-center justify-center flex-wrap gap-1">
@@ -99,7 +100,8 @@ export default function AvailabilityPage() {
                               return (
                                 <div
                                   key={s.id || idx}
-                                  className={`flex items-center gap-1 px-2 py-1 border rounded ${colorClass}`}
+                                  className={`flex items-center gap-1 px-2 py-1 border rounded cursor-pointer transition-all hover:opacity-75 ${colorClass}`}
+                                  onClick={() => setDialogData(s)}
                                 >
                                   <span className="font-medium">{s.startHour} - {s.endHour}</span>
                                   <Button
@@ -107,7 +109,10 @@ export default function AvailabilityPage() {
                                     variant="ghost"
                                     className="!p-0 size-5 text-destructive hover:bg-destructive"
                                     title="Excluir disponibilidade"
-                                    onClick={() => setDeleteData({ slotId: s.id })}
+                                    onClick={(ev) => {
+                                      ev.stopPropagation();
+                                      setDeleteData({ slotId: s.id });
+                                    }}
                                   >
                                     ×
                                   </Button>
@@ -117,7 +122,18 @@ export default function AvailabilityPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => setDialogData({ vendorId: v.id, date: dateStr })}
+                              onClick={() => {
+                                setDialogData({
+                                  id: "",
+                                  cityId,
+                                  vendorId: v.id,
+                                  date: dateStr,
+                                  startHour: "",
+                                  endHour: "",
+                                  createdAt: "",
+                                  updatedAt: "",
+                                })
+                              }}
                               className="w-8 h-8"
                             >
                               +
@@ -133,18 +149,16 @@ export default function AvailabilityPage() {
           </Table>
 
           {dialogData && (
-            <AddSlotDialog
+            <SlotDialog
               open={!!dialogData}
               onClose={() => setDialogData(null)}
-              vendorId={dialogData.vendorId}
-              cityId={cityId}
-              date={dialogData.date}
-              onCreated={mutate}
+              onCreateOrUpdate={mutate}
+              availability={dialogData}
             />
           )}
 
           {deleteData && (
-            <DeleteSlotDialog
+            <SlotDeleteDialog
               open={!!deleteData}
               onClose={() => setDeleteData(null)}
               slotId={deleteData.slotId}

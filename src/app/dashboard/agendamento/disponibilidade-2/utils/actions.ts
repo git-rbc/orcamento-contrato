@@ -26,57 +26,89 @@ export async function fetchAvailabilities(props: {
   return data as Availability[];
 }
 
-export async function createAvailability(slot: Omit<Availability, "id" | "createdAt" | "updatedAt">) {
-  const supabase = createClient()
-
-  const timeToMinutes = (time: string): number => {
-    if (!time || time.length !== 5 || time[2] !== ':') {
-      throw new Error("Formato de hora inválido. Use HH:MM.")
-    }
+async function validateAvailability(props: {
+  cityId: string;
+  vendorId: string;
+  date: string;
+  startHour: string;
+  endHour: string;
+}) {
+  const { cityId, vendorId, date, startHour, endHour } = props;
+  const timeToMinutes = (time: string) => {
+    if (!time || time.length !== 5 || time[2] !== ':') return;
     const [hours, minutes] = time.split(':').map(Number)
     return hours * 60 + minutes
   }
 
-  const newStart = timeToMinutes(slot.startHour)
-  const newEnd = timeToMinutes(slot.endHour)
+  const newStart = timeToMinutes(startHour)
+  const newEnd = timeToMinutes(endHour)
 
-  if (newEnd <= newStart) {
-    throw new Error("O horário de fim deve ser posterior ao horário de início.")
+  if (!newStart || !newEnd) {
+    return { error: new Error("Formato de hora inválido. Use HH:MM.") }
+  } else if (newEnd <= newStart) {
+    return { error: new Error("O horário de fim deve ser posterior ao horário de início.") }
   }
 
-  const { data: existingSlots, error: fetchError } = await supabase
+  const supabase = createClient()
+
+  const { data, error } = await supabase
     .from("availability")
     .select("startHour, endHour")
-    .eq("vendorId", slot.vendorId)
-    .eq("cityId", slot.cityId)
-    .eq("date", slot.date)
-    
-  if (fetchError) throw new Error("Erro ao verificar sobreposição: " + fetchError.message)
+    .eq("vendorId", vendorId)
+    .eq("cityId", cityId)
+    .eq("date", date);
 
-  const overlaps = existingSlots?.some((a: any) => {
+  if (error) return { error };
+
+  const overlaps = data?.some((a: any) => {
     const existingStart = timeToMinutes(a.startHour)
     const existingEnd = timeToMinutes(a.endHour)
     
     const isOverlapping = newStart < existingEnd && newEnd > existingStart
 
     return isOverlapping
-  })
+  });
 
-  if (overlaps) {
-    throw new Error("Essa disponibilidade sobrepõe outra existente.")
-  }
+  if (overlaps) return { error: new Error("Essa disponibilidade sobrepõe outra existente.") };
 
-  const { data, error } = await supabase
-    .from("availability")
-    .insert([slot as any]) 
-    .select()
+  return { error: undefined };
+}
 
-  if (error) {
-    console.error("Erro ao criar disponibilidade:", error)
-    throw new Error("Erro ao criar disponibilidade: " + error.message)
-  }
+export async function createAvailability(props: {
+  cityId: string;
+  vendorId: string;
+  date: string;
+  startHour: string;
+  endHour: string;
+}) {
+  const supabase = createClient()
 
-  return data[0]
+  const { error: validateError } = await validateAvailability(props);
+  if (validateError) return { error: validateError };
+
+  const { error } = await supabase.from("availability").insert(props);
+
+  return { error };
+}
+
+export async function updateAvailability(props: {
+  id: string;
+  cityId: string;
+  vendorId: string;
+  date: string;
+  startHour: string;
+  endHour: string;
+}) {
+  const { id, startHour, endHour } = props;
+
+  const supabase = createClient()
+
+  const { error: validateError } = await validateAvailability(props);
+  if (validateError) return { error: validateError };
+
+  const { error } = await supabase.from("availability").update({ startHour, endHour }).eq("id", id);
+
+  return { error };
 }
 
 export async function deleteAvailability(props: {
