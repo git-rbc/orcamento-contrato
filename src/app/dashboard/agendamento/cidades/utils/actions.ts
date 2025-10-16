@@ -33,7 +33,7 @@ export async function createCity(props: {
 
     const { error } = await supabase.from('city').insert(props);
     
-    if(!error) revalidatePath("/dashboard/agendamento/cidades");
+    if (!error) revalidatePath("/dashboard/agendamento/cidades");
 
     return { error };
 }
