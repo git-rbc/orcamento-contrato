@@ -25,9 +25,31 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
   const [seguimentoFiltro, setSeguimentoFiltro] = useState<'alimentos' | 'bebidas' | 'decoracao' | 'itens_extra' | null>(null);
   const [validationMessages, setValidationMessages] = useState<Map<string, string>>(new Map());
   const valoresMinimosRef = useRef<Map<string, number>>(new Map());
+  const [valoresOriginaisDecoracoes, setValoresOriginaisDecoracoes] = useState<Map<string, number>>(new Map());
 
-  // Função para verificar se um item é editável (Locação, Tx. Ecad, Gerador de Energia)
+  // Função para verificar se um item é de decoração
+  const isDecoracaoItem = (item: LinhaItem) => {
+    const descricaoLower = item.descricao.toLowerCase();
+    return descricaoLower.includes('decoração') ||
+           descricaoLower.includes('decoracao') ||
+           item.descricao === 'Selecione a decoração clicando aqui';
+  };
+
+  // Função para verificar se decoração tem produto selecionado (pode ser editada)
+  const isDecoracaoEditavel = (item: LinhaItem) => {
+    return isDecoracaoItem(item) &&
+           item.produtoId !== null &&
+           item.descricao !== 'Selecione a decoração clicando aqui';
+  };
+
+  // Função para verificar se um item é editável (Locação, Tx. Ecad, Gerador de Energia ou Decoração com produto selecionado)
   const isItemEditavel = (item: LinhaItem) => {
+    // Verificar primeiro se é decoração editável
+    if (isDecoracaoEditavel(item)) {
+      return true;
+    }
+
+    // Verificar itens editáveis padrão
     const descricaoLower = item.descricao.toLowerCase();
     return descricaoLower.includes('locação') ||
            descricaoLower.includes('locacao') ||
@@ -106,8 +128,14 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
     const item = items.find(i => i.id === itemId);
     if (!item || !isItemEditavel(item)) return 0;
 
+    // Se for decoração editável, retornar o valor original armazenado
+    if (isDecoracaoEditavel(item)) {
+      return valoresOriginaisDecoracoes.get(itemId) || 0;
+    }
+
+    // Caso contrário, buscar valor mínimo cadastrado (para outros itens editáveis)
     return await buscarValorMinimoCadastrado(item);
-  }, [items, buscarValorMinimoCadastrado]);
+  }, [items, buscarValorMinimoCadastrado, valoresOriginaisDecoracoes]);
 
   // Estados para gerenciar valores de input em formato string
   const [inputValues, setInputValues] = useState<Map<string, string>>(new Map());
@@ -151,16 +179,23 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
 
   const removeItem = (id: string) => {
     const item = items.find(i => i.id === id);
-    
+
     // Não permitir exclusão do item de decoração - apenas resetar para o estado inicial
     if (item && (
-      item.descricao === 'Selecione a decoração clicando aqui' || 
+      item.descricao === 'Selecione a decoração clicando aqui' ||
       item.descricao.toLowerCase().includes('decoração') ||
       item.descricao.toLowerCase().includes('decoracao')
     )) {
+      // Remover valor original armazenado
+      setValoresOriginaisDecoracoes(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(id);
+        return newMap;
+      });
+
       // Resetar o item de decoração para o estado inicial em vez de remover
-      setItems(items.map(i => 
-        i.id === id 
+      setItems(items.map(i =>
+        i.id === id
           ? {
               ...i,
               produtoId: null,
@@ -173,12 +208,24 @@ export function PropostaServicos({ items, setItems, titulo, espacoId, diaSemana,
       ));
       return;
     }
-    
+
     setItems(items.filter(i => i.id !== id));
   };
   
   const handleProductSelect = (produto: Produto) => {
     if (!activeItemId) return;
+
+    const targetItem = items.find(i => i.id === activeItemId);
+
+    // Se for um item de decoração, armazenar o valor original
+    if (targetItem && isDecoracaoItem(targetItem)) {
+      setValoresOriginaisDecoracoes(prev => {
+        const newMap = new Map(prev);
+        newMap.set(activeItemId, produto.valor);
+        return newMap;
+      });
+    }
+
     setItems(items.map(item => {
       if (item.id !== activeItemId) return item;
       return {

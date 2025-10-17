@@ -118,7 +118,7 @@ const MAX_PARCELAS_SALDO_FINAL_CONSULTOR = 18; // Até 18x no saldo final
 const TAXA_JUROS_CONSULTOR_PADRAO = 0.0129; // 1,29% ao mês padrão
 const MIN_PARCELAS_PARA_CONSULTOR = 5; // Mínimo de 5 parcelas para usar este modelo
 
-const MAX_MESES_PAGAMENTO_INDIA = 30; // Mantém limite já aplicado em calcularMesesAteEvento
+const MAX_MESES_PAGAMENTO_INDIA = 600; // ~50 anos - permite cálculo dinâmico baseado em meses reais
 const MAX_COMPOUND_PERIODS = 600; // ~50 anos em meses, apenas para evitar overflow
 const MAX_COMPOUND_RATE = 1; // 100% ao mês para impedir bases negativas ou infinitas
 const MIN_COMPOUND_RATE = -0.99; // evita base zero ou negativa no log

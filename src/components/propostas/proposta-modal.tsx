@@ -178,6 +178,9 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
   const [clienteItems, setClienteItems] = useState<SearchItem[]>([]);
   const [clienteLoading, setClienteLoading] = useState(false);
 
+  // Estado para controlar se proposta foi recém-carregada (evitar recálculos automáticos)
+  const [propostaRecemCarregada, setPropostaRecemCarregada] = useState(false);
+
 
   // Centralized state for all proposal items
   const [alimentacaoItens, setAlimentacaoItens] = useState<LinhaItem[]>([{ 
@@ -514,7 +517,15 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
             if (proposta.espaco_id) {
               await handleEspacoChange(proposta.espaco_id, true);
             }
-            
+
+            // Marcar que a proposta foi recém-carregada
+            setPropostaRecemCarregada(true);
+
+            // Desmarcar após 3 segundos para permitir recálculos futuros
+            setTimeout(() => {
+              setPropostaRecemCarregada(false);
+            }, 3000);
+
             console.log('Proposta carregada com sucesso');
           } else {
             const errorData = await response.json();
@@ -603,11 +614,13 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
           negociacao: '',
         });
       }
-      
-      // Aguardar um pouco antes de carregar serviços após mudanças de ordem
-      setTimeout(() => {
-        carregarServicosTemplate();
-      }, 200);
+
+      // Carregar serviços template apenas para novas propostas (não para edição)
+      if (!propostaId) {
+        setTimeout(() => {
+          carregarServicosTemplate();
+        }, 200);
+      }
     }
   }, [open, propostaId]);
 
@@ -664,14 +677,15 @@ export function PropostaModal({ open, onOpenChange, propostaId }: PropostaModalP
 
   // Recalcular serviços quando dados relevantes mudarem
   useEffect(() => {
-    if (open && servicosItens.length > 0) {
+    // Não recalcular se a proposta foi recém-carregada (para preservar valores editados)
+    if (open && servicosItens.length > 0 && !propostaRecemCarregada) {
       const timer = setTimeout(() => {
         recalcularServicos(setServicosItens);
       }, 1500); // Aumentado para 1.5s para dar tempo da API estabilizar após mudanças de ordem
 
       return () => clearTimeout(timer);
     }
-  }, [espacoId, diaSemana, numPessoas, alimentacaoItens, bebidasItens, itensExtras, open, dataContratacao, dataEvento]);
+  }, [espacoId, diaSemana, numPessoas, alimentacaoItens, bebidasItens, itensExtras, open, dataContratacao, dataEvento, propostaRecemCarregada]);
 
 
 
