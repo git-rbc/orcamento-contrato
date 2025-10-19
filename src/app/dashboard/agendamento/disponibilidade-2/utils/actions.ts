@@ -55,7 +55,6 @@ async function validateAvailability(props: {
     .from("availability")
     .select("startHour, endHour")
     .eq("vendorId", vendorId)
-    .eq("cityId", cityId)
     .eq("date", date);
 
   if (error) return { error };
@@ -69,7 +68,7 @@ async function validateAvailability(props: {
     return isOverlapping
   });
 
-  if (overlaps) return { error: new Error("Essa disponibilidade sobrepõe outra existente.") };
+  if (overlaps) return { error: new Error(`A disponibilidade ${startHour}-${endHour} sobrepõe outra existente.`) };
 
   return { error: undefined };
 }
