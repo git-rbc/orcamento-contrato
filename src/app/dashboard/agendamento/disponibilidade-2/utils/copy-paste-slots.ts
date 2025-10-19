@@ -9,6 +9,7 @@ type CopiedSlot = Pick<Availability, "startHour" | "endHour">;
 
 export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
   const [copiedSlots, setCopiedSlots] = useState<CopiedSlot[] | null>(null);
+  const [pastingCells, setPastingCells] = useState<Set<string>>(new Set());
 
   const handleCopy = (selected: HTMLElement | null) => {
     if (!selected) return;
@@ -57,6 +58,14 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
       return;
     }
 
+    const key = `${vendorId}_${date}`;
+    if (pastingCells.has(key)) {
+      return;
+    }
+
+    setPastingCells((prev) => new Set(prev).add(key));
+
+    let anySuccess = false;
     for (const s of copiedSlots) {
       const { error } = await createAvailability({
         cityId,
@@ -68,12 +77,22 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
 
       if (error) {
         toast.error(error.message);
-        return;
+        continue;
       }
-    }
 
-    toast.success("Slots colados com sucesso!");
-    onCreated?.();
+      anySuccess = true;
+    }
+    
+    setPastingCells((prev) => {
+      const updated = new Set(prev);
+      updated.delete(key);
+      return updated;
+    });
+
+    if (anySuccess) {
+      toast.success("Slots colados com sucesso!");
+      onCreated?.();
+    }
   };
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLDivElement>) => {

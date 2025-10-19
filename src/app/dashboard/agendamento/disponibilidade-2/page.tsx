@@ -29,13 +29,22 @@ export default function AvailabilityPage() {
     return vendors.map((v) => v.id);
   }, [vendors]);
 
+  const dateDiff = useMemo(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const startUTC = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+    const endUTC = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+
+    return Math.round((endUTC - startUTC) / (1000 * 60 * 60 * 24)) + 1;
+  }, [startDate, endDate]);
+
   const { data: availabilities, isLoading, mutate } = useSWR(
     ["availability", cityId, vendorIds, startDate, endDate],
     ([_, cityId, vendorIds, startDate, endDate]) => fetchAvailabilities({ cityId, vendorIds, startDate, endDate })
   )
 
   const { handleKeyDown } = useCopyPasteSlots(cityId, mutate);
-
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -82,7 +91,7 @@ export default function AvailabilityPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24)) + 1 }).map((_, i) => {
+              {Array.from({ length: dateDiff }).map((_, i) => {
                 const d = new Date(startDate);
                 d.setDate(d.getDate() + i);
                 const dateStr = d.toISOString().split("T")[0];
