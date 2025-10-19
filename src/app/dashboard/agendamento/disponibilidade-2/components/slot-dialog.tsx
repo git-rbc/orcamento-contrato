@@ -35,7 +35,7 @@ export function SlotDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       startHour: availability.startHour,
-      endHour: availability.startHour,
+      endHour: availability.endHour,
     }
   });
 
