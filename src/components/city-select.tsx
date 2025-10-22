@@ -4,15 +4,16 @@ import { FC, UIEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Input } from "./ui/input";
 import useSWRInfinite from "swr/infinite";
-import { RefCallBack } from "react-hook-form";
+import { ControllerRenderProps, RefCallBack } from "react-hook-form";
 
 type CitySelectProps = {
   ref?: RefCallBack;
   value: string;
   onSelect: (city: any) => void;
+  field?: ControllerRenderProps;
 }
 
-const CitySelect: FC<CitySelectProps> = ({ ref, value, onSelect }) => {
+const CitySelect: FC<CitySelectProps> = ({ ref, value, onSelect, field }) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -63,6 +64,7 @@ const CitySelect: FC<CitySelectProps> = ({ ref, value, onSelect }) => {
 
   return (
     <Select
+      {...field}
       value={value}
       onValueChange={(value) => {
         const selectedCity = cities.find((c) => c.id === value);

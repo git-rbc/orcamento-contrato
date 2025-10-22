@@ -43,7 +43,12 @@ export default async function CityPage(props: {
                     <TableBody>
                         {data.map((city) => (
                             <TableRow key={city.id}>
-                                <TableCell>{city.name}</TableCell>
+                                <TableCell>
+                                    <div className="flex flex-row items-center gap-2">
+                                        <span className={`bg-${city.color}-100 text-${city.color}-800 border-${city.color}-300 size-4 border rounded-full`}/>
+                                        {city.name}
+                                    </div>
+                                </TableCell>
                                 <TableCell align="right" className="space-x-2">
                                     <CityDialog city={city}/>
                                     <CityDeleteDialog city={city}/>

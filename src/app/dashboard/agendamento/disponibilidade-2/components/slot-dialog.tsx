@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import useSWR from "swr";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
+import { CitySelect } from "@/components/city-select";
 
 type SlotDialogProps = {
   open: boolean;
@@ -26,6 +27,7 @@ export function SlotDialog({
   availability,
 }: SlotDialogProps) {
   const formSchema = z.object({
+    cityId: z.string({ message: "Selecione uma cidade" }).nonempty({ message: "Selecione uma cidade"}),
     startHour: z.string({ message: "Insira a hora de início"}).nonempty({ message: "Insira a hora de início"}),
     endHour: z.string({ message: "Insira a hora de fim"}).nonempty({ message: "Insira a hora de fim"}),
   });
@@ -34,6 +36,7 @@ export function SlotDialog({
   const form = useForm<formSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      cityId: availability.cityId,
       startHour: availability.startHour,
       endHour: availability.endHour,
     }
@@ -50,25 +53,14 @@ export function SlotDialog({
     ([_, vendorId]) => getVendor(vendorId),
   )
 
-  const getCity = async (id: string) => {
-    const supabase = createClient();
-    const { data } = await supabase.from("city").select("*").eq("id", id).single();
-    return data;
-  }
-
-  const { data: city, isLoading: cityLoading } = useSWR(
-    ["city", availability.cityId],
-    ([_, vendorId]) => getCity(vendorId),
-  )
-
-  const onSubmit = async ({ startHour, endHour}: formSchemaType) => {
-    const { id, cityId, vendorId, date } = availability;
+  const onSubmit = async ({ cityId, startHour, endHour}: formSchemaType) => {
+    const { id, vendorId, date } = availability;
     const { error } = id
       ? await updateAvailability({ id, cityId, vendorId, date, startHour, endHour })
       : await createAvailability({ cityId, vendorId, date, startHour, endHour });
 
     if (!error) {
-      if (!city?.id) form.reset();
+      if (!availability.id) form.reset();
       toast.success(availability.id
         ? "Slot atualizado com sucesso!"
         : "Slot criado com sucesso!"
@@ -103,14 +95,6 @@ export function SlotDialog({
             )}
           </div>
           <div className="flex flex-row items-center gap-1">
-            <p className="font-semibold">Cidade:</p>
-            {cityLoading ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"/>
-            ) : (
-              <p>{city.name}</p>
-            )}
-          </div>
-          <div className="flex flex-row items-center gap-1">
             <p className="font-semibold">Data:</p>
             <p>{new Date(availability.date).toLocaleDateString()}</p>
           </div>
@@ -118,6 +102,19 @@ export function SlotDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <FormField
+              control={form.control}
+              name="cityId"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>Cidade</FormLabel>
+                  <FormControl>
+                    <CitySelect value={field.value} onSelect={(city) => field.onChange(city.id)} field={field}/>
+                  </FormControl>
+                  <FormMessage/>
+                </FormItem>
+              )}
+            />
             <div className="flex flex-row gap-4 w-full">
               <FormField
                 control={form.control}
@@ -148,7 +145,7 @@ export function SlotDialog({
             </div>
             
             <DialogFooter>
-              <Button type="submit" disabled={form.formState.isSubmitting || vendorLoading || cityLoading}>
+              <Button type="submit" disabled={form.formState.isSubmitting || vendorLoading}>
                 {availability.id ? "Salvar" : "Criar"}
               </Button>
             </DialogFooter>

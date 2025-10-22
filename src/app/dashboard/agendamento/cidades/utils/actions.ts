@@ -28,6 +28,7 @@ export async function getCity(props: {
 
 export async function createCity(props: {
     name: string;
+    color: string;
 }) {
     const supabase = await createServerSupabaseClient();
 
@@ -41,12 +42,13 @@ export async function createCity(props: {
 export async function updateCity(props: {
     id: string;
     name: string;
+    color: string;
 }) {
-    const { id, name } = props;
+    const { id, name, color } = props;
 
     const supabase = await createServerSupabaseClient();
 
-    const { error } = await supabase.from('city').update({ name }).eq('id', id);
+    const { error } = await supabase.from('city').update({ name, color }).eq('id', id);
 
     if (!error) revalidatePath("/dashboard/agendamento/cidades");
 

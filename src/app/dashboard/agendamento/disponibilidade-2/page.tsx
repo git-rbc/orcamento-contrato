@@ -3,7 +3,7 @@ import { CitySelect } from "@/components/city-select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { VendorMultiSelect } from "@/components/vendor-multi-select";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { fetchAvailabilities } from "./utils/actions";
 import { SlotDialog } from "./components/slot-dialog";
 import { SlotDeleteDialog } from "./components/slot-delete-dialog";
@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import useSWR from "swr";
 import { Availability } from "./types/availability";
 import { useCopyPasteSlots } from "./utils/copy-paste-slots";
+import { Plus, X } from "lucide-react";
+import { colors } from "@/constants/colors";
 
 export default function AvailabilityPage() {
   const now = new Date();
@@ -20,14 +22,11 @@ export default function AvailabilityPage() {
   const [startDate, setStartDate] = useState<Date>(threeDaysAgo);
   const [endDate, setEndDate] = useState<Date>(sevenDaysAfter);
   const [cityId, setCityId] = useState<string>();
+  const [cities, setCities] = useState<{ id: string; name: string; color: string;}[]>([]);
   const [vendors, setVendors] = useState([]);
   const [dialogData, setDialogData] = useState<Availability | null>(null);
   const [deleteData, setDeleteData] = useState<{ slotId: string } | null>(null);
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
-  
-  const vendorIds = useMemo(() => {
-    return vendors.map((v) => v.id);
-  }, [vendors]);
 
   const dateDiff = useMemo(() => {
     const start = new Date(startDate);
@@ -40,11 +39,45 @@ export default function AvailabilityPage() {
   }, [startDate, endDate]);
 
   const { data: availabilities, isLoading, mutate } = useSWR(
-    ["availability", cityId, vendorIds, startDate, endDate],
-    ([_, cityId, vendorIds, startDate, endDate]) => fetchAvailabilities({ cityId, vendorIds, startDate, endDate })
+    ["availability", cityId, startDate, endDate],
+    ([_, cityId, startDate, endDate]) => fetchAvailabilities({ cityId, startDate, endDate })
   )
 
   const { handleKeyDown } = useCopyPasteSlots(cityId, mutate);
+
+  const getColor = (color?: string) => {
+    let base = color;
+    if (!base) base = colors[Math.floor(Math.random() * colors.length)];
+    return `bg-${base}-100 text-${base}-800 border-${base}-300`;
+  }
+
+  useEffect(() => {
+    if (!availabilities) return;
+    const vendors = availabilities.flatMap((availability) => availability.vendor).filter((v) => !!v.id);
+    setVendors((prev) => {
+      const merged = [...prev, ...vendors];
+
+      const unique = merged.filter(
+        (vendor, index, self) =>
+          index === self.findIndex((v) => v.id === vendor.id)
+      );
+
+      return unique;
+    });
+    
+    const cities = availabilities
+      .flatMap((availability) => availability.city)
+      .filter((c) => !!c.id)
+      .map((c) => ({ id: c.id, name: c.name, color: getColor(c.color) }));
+    setCities(() => {
+      const unique = cities.filter(
+        (vendor, index, self) =>
+          index === self.findIndex((v) => v.id === vendor.id)
+      );
+
+      return unique;
+    });
+  }, [availabilities]);
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -63,7 +96,10 @@ export default function AvailabilityPage() {
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <Label>Cidade</Label>
-          <CitySelect value={cityId} onSelect={(city) => setCityId(city.id)} />
+          <div className="flex flex-row items-center gap-2">
+            <CitySelect value={cityId} onSelect={(city) => setCityId(city.id)} />
+            {cityId && <X className="transition-all cursor-pointer hover:opacity-75" onClick={() => setCityId("")}/>}
+          </div>
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <Label>Vendedor</Label>
@@ -71,9 +107,17 @@ export default function AvailabilityPage() {
         </div>
       </div>
 
+      <div className="flex flex-row items-center gap-2">
+        {cities.map((city) => (
+          <div key={city.id} className={`${city.color} border rounded-md px-2 py-0.5 text-sm`}>
+            {city.name}
+          </div>
+        ))}
+      </div>
+
       {isLoading ? (
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"/>
-      ) : cityId && vendors.length > 0 ? (
+      ) : (
         <div
           className="overflow-x-auto rounded-md"
           tabIndex={0}
@@ -120,38 +164,28 @@ export default function AvailabilityPage() {
                         >
                           <div className="flex flex-row items-center justify-center flex-wrap gap-1">
                             {slots.map((s, idx) => {
-                              const now = new Date();
-                              const slotStart = new Date(s.date + "T" + s.startHour);
-                              const slotEnd = new Date(s.date + "T" + s.endHour);
-
-                              let colorClass = "bg-green-100 text-green-800 border-green-300";
-                              if (now >= slotStart && now <= slotEnd) {
-                                colorClass = "bg-yellow-100 text-yellow-800 border-yellow-300";
-                              } else if (now > slotEnd) {
-                                colorClass = "bg-red-100 text-red-800 border-red-300";
-                              }
-
+                              const color = cities.find((c) => c.id === s.cityId)?.color;
                               return (
                                 <div
                                   key={s.id || idx}
                                   className={
-                                    "flex items-center gap-1 px-2 py-1 border rounded cursor-pointer transition-all hover:opacity-75 " +
-                                    colorClass
+                                    "flex items-center gap-0.5 px-1 py-0.5 border rounded cursor-pointer transition-all hover:opacity-75 " +
+                                    (color ?? "")
                                   }
                                   onClick={() => setDialogData(s)}
                                 >
-                                  <span className="font-medium">{s.startHour} - {s.endHour}</span>
+                                  <span className="font-medium text-[10px] leading-[14px]">{s.startHour}-{s.endHour}</span>
                                   <Button
                                     size="sm"
                                     variant="ghost"
-                                    className="!p-0 size-5 text-destructive hover:bg-destructive"
+                                    className="!p-0 size-2 text-destructive hover:bg-destructive"
                                     title="Excluir disponibilidade"
                                     onClick={(ev) => {
                                       ev.stopPropagation();
                                       setDeleteData({ slotId: s.id });
                                     }}
                                   >
-                                    ×
+                                    <X className="p-1"/>
                                   </Button>
                                 </div>
                               );
@@ -171,9 +205,9 @@ export default function AvailabilityPage() {
                                   updatedAt: "",
                                 })
                               }}
-                              className="w-8 h-8"
+                              className="!size-6"
                             >
-                              +
+                              <Plus className="p-0.5"/>
                             </Button>
                           </div>
                         </TableCell>
@@ -203,8 +237,6 @@ export default function AvailabilityPage() {
             />
           )}
         </div>
-      ) : (
-        <p className="text-sm font-medium">Selecione uma cidade e/ou um vendedor para continuar</p>
       )}
     </div>
   );
