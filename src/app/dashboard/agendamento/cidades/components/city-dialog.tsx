@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { createCity, updateCity } from "../utils/actions";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { colors } from "@/constants/colors";
 
 export function CityDialog({
     city
@@ -20,6 +22,7 @@ export function CityDialog({
 
     const formSchema = z.object({
         name: z.string({ message: "Insira uma cidade"}).nonempty({ message: "Insira uma cidade"}),
+        color: z.string({ message: "Selecione uma cor"}).nonempty({ message: "Selecione uma cor"})
     });
     type formSchemaType = z.infer<typeof formSchema>;
 
@@ -27,13 +30,14 @@ export function CityDialog({
         resolver: zodResolver(formSchema),
         defaultValues: {
             name:city?.name ?? "",
+            color: city?.color ?? "",
         }
     });
 
-    const onSubmit = async({ name }: formSchemaType) =>{
+    const onSubmit = async({ name, color }: formSchemaType) =>{
         const { error } = city?.id
-            ? await updateCity({ name, id: city.id })
-            : await createCity({ name });
+            ? await updateCity({ color, name, id: city.id })
+            : await createCity({ color, name });
     
         if (!error) {
             if (!city?.id) form.reset();
@@ -74,6 +78,33 @@ export function CityDialog({
                                     <FormLabel>Nome</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Ex. Itapema"{...field}/>
+                                    </FormControl>
+                                    <FormMessage/>
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="color"
+                            render={({field}) => (
+                                <FormItem>
+                                    <FormLabel>Nome</FormLabel>
+                                    <FormControl>
+                                        <Select onValueChange={(value) => field.onChange(value)} {...field}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Selecione uma cor"/>
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {colors.map((color) => (
+                                                    <SelectItem key={color} value={color}>
+                                                        <div className="flex flex-row items-center gap-2">
+                                                            <span className={`bg-${color}-100 text-${color}-800 border-${color}-300 size-4 border rounded-full`}/>
+                                                            <p>{color}</p>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </FormControl>
                                     <FormMessage/>
                                 </FormItem>

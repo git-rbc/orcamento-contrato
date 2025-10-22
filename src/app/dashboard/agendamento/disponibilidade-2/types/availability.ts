@@ -1,3 +1,5 @@
+import { City } from "../../cidades/types/city"
+
 export interface Availability {
   id: string
   vendorId: string
@@ -7,4 +9,6 @@ export interface Availability {
   endHour: string
   createdAt: string
   updatedAt: string
+  vendor?: any
+  city?: City
 }

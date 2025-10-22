@@ -2,24 +2,25 @@ import { createClient } from "@/lib/supabase"
 import { Availability } from "../types/availability"
 
 export async function fetchAvailabilities(props: {
-  cityId: string, 
-  vendorIds: string[],
+  cityId?: string, 
   startDate: Date,
   endDate: Date
 }) {
-  const { cityId, vendorIds, startDate, endDate } = props;
+  const { cityId, startDate, endDate } = props;
   const supabase = createClient()
 
   const startIso = startDate.toISOString().split("T")[0]
   const endIso = endDate.toISOString().split("T")[0]
-
-  const { data, error } = await supabase
+  
+  const query = supabase
     .from("availability")
-    .select("*")
-    .eq("cityId", cityId)
-    .in("vendorId", vendorIds)
+    .select("*, vendor: users(*), city(*)")
     .gte("date", startIso)
     .lte("date", endIso)
+
+  if (cityId) query.eq("cityId", cityId)
+
+  const { data, error } = await query;
 
   if (error) throw new Error(error.message)
 
@@ -27,13 +28,14 @@ export async function fetchAvailabilities(props: {
 }
 
 async function validateAvailability(props: {
+  id?: string;
   cityId: string;
   vendorId: string;
   date: string;
   startHour: string;
   endHour: string;
 }) {
-  const { cityId, vendorId, date, startHour, endHour } = props;
+  const { id, vendorId, date, startHour, endHour } = props;
   const timeToMinutes = (time: string) => {
     if (!time || time.length !== 5 || time[2] !== ':') return;
     const [hours, minutes] = time.split(':').map(Number)
@@ -53,7 +55,7 @@ async function validateAvailability(props: {
 
   const { data, error } = await supabase
     .from("availability")
-    .select("startHour, endHour")
+    .select("*")
     .eq("vendorId", vendorId)
     .eq("date", date);
 
@@ -65,7 +67,7 @@ async function validateAvailability(props: {
     
     const isOverlapping = newStart < existingEnd && newEnd > existingStart
 
-    return isOverlapping
+    return a.id !== id && isOverlapping
   });
 
   if (overlaps) return { error: new Error(`A disponibilidade ${startHour}-${endHour} sobrepõe outra existente.`) };
@@ -98,14 +100,14 @@ export async function updateAvailability(props: {
   startHour: string;
   endHour: string;
 }) {
-  const { id, startHour, endHour } = props;
+  const { id, cityId, startHour, endHour } = props;
 
   const supabase = createClient()
 
   const { error: validateError } = await validateAvailability(props);
   if (validateError) return { error: validateError };
 
-  const { error } = await supabase.from("availability").update({ startHour, endHour }).eq("id", id);
+  const { error } = await supabase.from("availability").update({ cityId, startHour, endHour }).eq("id", id);
 
   return { error };
 }
