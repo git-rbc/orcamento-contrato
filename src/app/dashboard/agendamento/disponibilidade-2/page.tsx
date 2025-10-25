@@ -14,6 +14,8 @@ import { Availability } from "./types/availability";
 import { useCopyPasteSlots } from "./utils/copy-paste-slots";
 import { Plus, X } from "lucide-react";
 import { colors } from "@/constants/colors";
+import { ScheduleDialog } from "./components/schedule-dialog";
+import { fetchSchedules } from "./utils/schedule-actions";
 
 export default function AvailabilityPage() {
   const now = new Date();
@@ -27,6 +29,8 @@ export default function AvailabilityPage() {
   const [dialogData, setDialogData] = useState<Availability | null>(null);
   const [deleteData, setDeleteData] = useState<{ slotId: string } | null>(null);
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
+  const [openSchedule, setOpenSchedule] = useState(false);
+  const [schedules, setSchedules] = useState<any[]>([]);
 
   const dateDiff = useMemo(() => {
     const start = new Date(startDate);
@@ -41,7 +45,18 @@ export default function AvailabilityPage() {
   const { data: availabilities, isLoading, mutate } = useSWR(
     ["availability", cityId, startDate, endDate],
     ([_, cityId, startDate, endDate]) => fetchAvailabilities({ cityId, startDate, endDate })
-  )
+  );
+
+  const { data: scheduleData, isLoading: isLoadingSchedules } = useSWR(
+    ["schedules", cityId, startDate, endDate],
+    ([_, cityId, startDate, endDate]) => fetchSchedules({ cityId, startDate, endDate })
+  );
+
+  useEffect(() => {
+    if (scheduleData?.data) {
+      setSchedules(scheduleData.data);
+    }
+  }, [scheduleData]);
 
   const { handleKeyDown } = useCopyPasteSlots(cityId, mutate);
 
@@ -49,7 +64,7 @@ export default function AvailabilityPage() {
     let base = color;
     if (!base) base = colors[Math.floor(Math.random() * colors.length)];
     return `bg-${base}-100 text-${base}-800 border-${base}-300`;
-  }
+  };
 
   useEffect(() => {
     if (!availabilities) return;
@@ -83,6 +98,7 @@ export default function AvailabilityPage() {
     <div className="flex flex-col gap-4 w-full">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
         <h2 className="text-2xl font-bold">Disponibilidade</h2>
+        <Button onClick={() => setOpenSchedule(true)}>+ Novo Agendamento</Button>
       </div>
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
@@ -165,11 +181,15 @@ export default function AvailabilityPage() {
                           <div className="flex flex-row items-center justify-center flex-wrap gap-1">
                             {slots.map((s, idx) => {
                               const color = cities.find((c) => c.id === s.cityId)?.color;
+                              const hasSchedule = schedules.some(
+                                (sc) => sc.availability?.startHour === s.startHour && sc.vendorId === v.id && sc.date === dateStr
+                              );
                               return (
                                 <div
                                   key={s.id || idx}
                                   className={
                                     "flex items-center gap-0.5 px-1 py-0.5 border rounded cursor-pointer transition-all hover:opacity-75 " +
+                                    (hasSchedule ? "bg-green-100 border-green-300 " : "") +
                                     (color ?? "")
                                   }
                                   onClick={() => setDialogData(s)}
@@ -187,6 +207,22 @@ export default function AvailabilityPage() {
                                   >
                                     <X className="p-1"/>
                                   </Button>
+
+                                  {schedules
+                                    .filter(
+                                      (sc) =>
+                                        sc.availability?.startHour === s.startHour &&
+                                        sc.vendorId === v.id &&
+                                        sc.date === dateStr
+                                    )
+                                    .map((sc) => (
+                                      <div
+                                        key={sc.id}
+                                        className="text-xs text-primary font-medium bg-primary/10 rounded px-1 mt-0.5"
+                                      >
+                                        {sc.clientName} ({sc.clientPhone})
+                                      </div>
+                                    ))}
                                 </div>
                               );
                             })}
@@ -203,7 +239,7 @@ export default function AvailabilityPage() {
                                   endHour: "",
                                   createdAt: "",
                                   updatedAt: "",
-                                })
+                                });
                               }}
                               className="!size-6"
                             >
@@ -238,6 +274,11 @@ export default function AvailabilityPage() {
           )}
         </div>
       )}
+      <ScheduleDialog
+        open={openSchedule}
+        onClose={() => setOpenSchedule(false)}
+        onCreated={() => {}}
+      />
     </div>
   );
 }

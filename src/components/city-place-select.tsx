@@ -27,9 +27,9 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => 
         const from = (page - 1) * limit;
         const to = from + limit - 1;
 
-        let query = supabase.from("cityPlace").select("*", { count: "exact" });
+        let query = supabase.from("espacos_eventos").select("*", { count: "exact" });
 
-        if (search) query = query.ilike("name", `%${search}%`);
+        if (search) query = query.ilike("nome", `%${search}%`);
 
         const { data, error, count } = await query.range(from, to);
 
@@ -39,7 +39,7 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => 
     }
 
     const { data, error, isLoading, size, setSize } = useSWRInfinite(
-        (index) => ["cityPlace", debouncedSearch, index + 1],
+        (index) => ["espacos_eventos", debouncedSearch, index + 1],
         ([_, search, page]) => getCityPlace({ search, page }),
     );
 
@@ -90,7 +90,7 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => 
                     )}
 
                     {cityPlaces.map((cityPlace: any) => (
-                        <SelectItem key={cityPlace.id} value={cityPlace.id}>{cityPlace.name}</SelectItem>
+                        <SelectItem key={cityPlace.id} value={cityPlace.id}>{cityPlace.nome}</SelectItem>
                     ))}
 
                     {isLoading && <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"/>}
