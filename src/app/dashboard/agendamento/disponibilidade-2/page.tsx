@@ -16,6 +16,9 @@ import { Plus, X } from "lucide-react";
 import { colors } from "@/constants/colors";
 import { ScheduleDialog } from "../agendamentos/components/schedule-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { Schedule } from "../agendamentos/types/schedule";
+import { ScheduleDeleteDialog } from "../agendamentos/components/schedule-delete-dialog";
 
 export default function AvailabilityPage() {
   const now = new Date();
@@ -28,6 +31,9 @@ export default function AvailabilityPage() {
   const [vendors, setVendors] = useState([]);
   const [dialogData, setDialogData] = useState<Availability | null>(null);
   const [deleteData, setDeleteData] = useState<{ slotId: string } | null>(null);
+  const [scheduleData, setScheduleData] = useState<Schedule | null>(null);
+  const [deleteScheduleData, setScheduleDeleteData] = useState<Schedule | null>(null);
+  const [schedulePopover, setSchedulePopover] = useState<string>();
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
 
   const dateDiff = useMemo(() => {
@@ -169,55 +175,74 @@ export default function AvailabilityPage() {
                             {slots.map((s) => {
                               const color = cities.find((c) => c.id === s.cityId)?.color;
                               const schedule = s.schedule?.[0];
+                              return (
+                                <div key={s.id} className="relative">
+                                  <ContextMenu modal={false}>
+                                    <ContextMenuTrigger asChild>
+                                      <div
+                                        className={
+                                          "flex items-center gap-0.5 px-1 py-0.5 border rounded transition-all cursor-pointer select-none " +
+                                          (schedule ? `opacity-75 ${getColor("red")}` : `hover:opacity-75 ${color ?? ""}`)
+                                        }
+                                        onClick={() => {
+                                          if (schedule) setSchedulePopover(s.id);
+                                          else setDialogData(s);
+                                        }}
+                                      >
+                                        <span className="font-medium text-[10px] leading-[14px]">{s.startHour}-{s.endHour}</span>
+                                        {!schedule && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="!p-0 size-2 text-destructive hover:bg-destructive"
+                                            title="Excluir disponibilidade"
+                                            onClick={() => {
+                                              setDeleteData({ slotId: s.id });
+                                            }}
+                                          >
+                                            <X className="p-1"/>
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </ContextMenuTrigger>
+                                    <ContextMenuContent>
+                                      <ContextMenuItem onClick={() => setDialogData(s)} disabled={schedule !== undefined}>
+                                        Editar Slot
+                                      </ContextMenuItem>
+                                      <ContextMenuItem onClick={() => setDeleteData({ slotId: s.id })} disabled={schedule !== undefined}>
+                                        Remover Slot
+                                      </ContextMenuItem>
+                                      <ContextMenuSeparator/>
+                                      <ContextMenuItem onClick={() => setScheduleData(schedule)} disabled={schedule === undefined}>
+                                        Editar Agendamento
+                                      </ContextMenuItem>
+                                      <ContextMenuItem onClick={() => setScheduleDeleteData(schedule)} disabled={schedule === undefined}>
+                                        Remover Agendamento
+                                      </ContextMenuItem>
+                                    </ContextMenuContent>
+                                  </ContextMenu>
 
-                              const slotButton = (
-                                <div
-                                  key={s.id}
-                                  className={
-                                    "flex items-center gap-0.5 px-1 py-0.5 border rounded transition-all cursor-pointer select-none " +
-                                    (schedule ? `opacity-75 ${getColor("red")}` : `hover:opacity-75 ${color ?? ""}`)
-                                  }
-                                  onClick={(ev) => {
-                                    ev.stopPropagation();
-                                    if (!schedule) setDialogData(s);
-                                  }}
-                                >
-                                  <span className="font-medium text-[10px] leading-[14px]">{s.startHour}-{s.endHour}</span>
-                                  {!schedule && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="!p-0 size-2 text-destructive hover:bg-destructive"
-                                      title="Excluir disponibilidade"
-                                      onClick={(ev) => {
-                                        ev.stopPropagation();
-                                        setDeleteData({ slotId: s.id });
-                                      }}
-                                    >
-                                      <X className="p-1"/>
-                                    </Button>
+                                  {schedule && (
+                                    <Popover open={schedulePopover === s.id} onOpenChange={() => setSchedulePopover(undefined)}>
+                                      <PopoverTrigger asChild>
+                                        <button
+                                          className="absolute top-0 left-0 w-full h-full"
+                                          style={{ pointerEvents: "none" }}
+                                        />
+                                      </PopoverTrigger>
+                                      <PopoverContent className="text-sm">
+                                        {schedule.externalCode && (<p><b>Código:</b> {schedule.externalCode}</p>)}
+                                        <p><b>Cliente:</b> {schedule.clientName}</p>
+                                        <p><b>Telefone:</b> {schedule.clientPhone}</p>
+                                        {schedule.preVendor?.nome && (<p><b>Pré-vendedor:</b> {schedule.preVendor.nome}</p>)}
+                                        {schedule.vendor?.nome && (<p><b>Vendedor:</b> {schedule.vendor.nome}</p>)}
+                                        {schedule.city?.name && (<p><b>Cidade:</b> {schedule.city.name}</p>)}
+                                        {schedule.cityPlace?.nome && (<p><b>Local:</b> {schedule.cityPlace.nome}</p>)}
+                                      </PopoverContent>
+                                    </Popover>
                                   )}
                                 </div>
                               );
-
-                              if (schedule) {
-                                return (
-                                  <Popover key={s.id}>
-                                    <PopoverTrigger asChild>{slotButton}</PopoverTrigger>
-                                    <PopoverContent className="text-sm">
-                                      {schedule.externalCode && (<p><b>Código:</b> {schedule.externalCode}</p>)}
-                                      <p><b>Cliente:</b> {schedule.clientName}</p>
-                                      <p><b>Telefone:</b> {schedule.clientPhone}</p>
-                                      {schedule.preVendor?.nome && (<p><b>Pré-vendedor:</b> {schedule.preVendor.nome}</p>)}
-                                      {schedule.vendor?.nome && (<p><b>Vendedor:</b> {schedule.vendor.nome}</p>)}
-                                      {schedule.city?.name && (<p><b>Cidade:</b> {schedule.city.name}</p>)}
-                                      {schedule.cityPlace?.nome && (<p><b>Local:</b> {schedule.cityPlace.nome}</p>)}
-                                    </PopoverContent>
-                                  </Popover>
-                                );
-                              }
-
-                              return slotButton;
                             })}
                             <Button
                               size="sm"
@@ -263,6 +288,24 @@ export default function AvailabilityPage() {
               onClose={() => setDeleteData(null)}
               slotId={deleteData.slotId}
               onDeleted={mutate}
+            />
+          )}
+
+          {scheduleData && (
+            <ScheduleDialog
+              schedule={scheduleData}
+              onSuccess={mutate}
+              defaultOpen={scheduleData !== null}
+              onClose={() => setScheduleData(null)}
+            />
+          )}
+
+          {deleteScheduleData && (
+            <ScheduleDeleteDialog
+              schedule={deleteScheduleData}
+              onSuccess={mutate}
+              defaultOpen={deleteScheduleData !== null}
+              onClose={() => setScheduleDeleteData(null)}
             />
           )}
         </div>

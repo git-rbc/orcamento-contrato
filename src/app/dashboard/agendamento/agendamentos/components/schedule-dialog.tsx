@@ -22,12 +22,16 @@ export function ScheduleDialog({
   schedule,
   customLabel,
   onSuccess,
+  defaultOpen,
+  onClose,
 } : {
   schedule?: Schedule;
   customLabel?: string;
   onSuccess?: () => void;
+  defaultOpen?: boolean;
+  onClose?: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen ?? false);
 
   const formSchema = z.object({
     externalCode: z.string().optional(),
@@ -82,6 +86,7 @@ export function ScheduleDialog({
         : "Agendamento criado com sucesso!"
       );
       setOpen(false);
+      onClose?.();
       onSuccess?.();
       return;
     }
@@ -94,11 +99,19 @@ export function ScheduleDialog({
   }, [vendorId, cityId, date]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(open) => {
+        setOpen(open);
+        onClose?.();
+      }}
+    >
       <DialogTrigger asChild>
-        <Button>
-          {customLabel ? customLabel : schedule ? "Atualizar" : "Criar"}
-        </Button>
+        {!defaultOpen ? (
+          <Button>
+            {customLabel ? customLabel : schedule ? "Atualizar" : "Criar"}
+          </Button>
+        ) : null}
       </DialogTrigger>
       <DialogContent className="max-h-[85%] overflow-y-auto">
         <DialogHeader>
