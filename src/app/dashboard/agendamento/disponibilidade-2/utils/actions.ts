@@ -15,7 +15,7 @@ export async function fetchAvailabilities(props: {
   
   const query = supabase
     .from("availability")
-    .select("*, vendor: users(*), city(*)")
+    .select("*, vendor: users(*), city(*), schedule(*, preVendor:preVendorId(*), vendor:vendorId(*), city(*), cityPlace:espacos_eventos(*))")
     .gte("date", startIso)
     .lte("date", endIso)
 

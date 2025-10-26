@@ -20,9 +20,11 @@ import { SlotSelect } from "@/components/slot-select";
 export function ScheduleDialog({
   schedule,
   customLabel,
+  onSuccess,
 } : {
   schedule?: Schedule;
   customLabel?: string;
+  onSuccess?: () => void;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -42,15 +44,15 @@ export function ScheduleDialog({
   const form = useForm<formSchemaType>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      externalCode: schedule?.externalCode ?? undefined,
+      externalCode: schedule?.externalCode ?? "",
       clientName: schedule?.clientName ?? "",
       clientPhone: schedule?.clientPhone ?? "",
-      preVendorId: schedule?.preVendorId,
-      vendorId: schedule?.vendorId,
-      cityId: schedule?.cityId,
-      cityPlaceId: schedule?.cityPlaceId,
+      preVendorId: schedule?.preVendorId ?? "",
+      vendorId: schedule?.vendorId ?? "",
+      cityId: schedule?.cityId ?? "",
+      cityPlaceId: schedule?.cityPlaceId ?? "",
       date: schedule?.date,
-      availabilityId: schedule?.availabilityId,
+      availabilityId: schedule?.availabilityId ?? "",
     },
   });
   const vendorId = form.watch("vendorId");
@@ -79,6 +81,7 @@ export function ScheduleDialog({
         : "Agendamento criado com sucesso!"
       );
       setOpen(false);
+      onSuccess?.();
       return;
     }
     
