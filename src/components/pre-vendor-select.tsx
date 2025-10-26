@@ -4,15 +4,16 @@ import { FC, UIEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Input } from "./ui/input";
 import useSWRInfinite from "swr/infinite";
-import { RefCallBack } from "react-hook-form";
+import { ControllerRenderProps, RefCallBack } from "react-hook-form";
 
 type PreVendorSelectProps = {
   ref?: RefCallBack;
   value: string;
   onSelect: (preVendor: any) => void;
+  field?: ControllerRenderProps;
 }
 
-const PreVendorSelect: FC<PreVendorSelectProps> = ({ ref, value, onSelect }) => {
+const PreVendorSelect: FC<PreVendorSelectProps> = ({ ref, value, onSelect, field }) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -60,6 +61,7 @@ const PreVendorSelect: FC<PreVendorSelectProps> = ({ ref, value, onSelect }) => 
 
   return (
     <Select
+      {...field}
       value={value}
       onValueChange={(value) => {
         const selectedPreVendor = preVendors.find((c) => c.id === value);

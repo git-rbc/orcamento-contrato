@@ -4,15 +4,16 @@ import { FC, UIEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Input } from "./ui/input";
 import useSWRInfinite from "swr/infinite";
-import { RefCallBack } from "react-hook-form";
+import { ControllerRenderProps, RefCallBack } from "react-hook-form";
 
 type CityPlaceSelectProps = {
     ref?: RefCallBack;
     value: string;
     onSelect: (cityPlace: any) => void;
+    field?: ControllerRenderProps;
 }
 
-const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => {
+const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect, field }) => {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -39,7 +40,7 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => 
     }
 
     const { data, error, isLoading, size, setSize } = useSWRInfinite(
-        (index) => ["espacos_eventos", debouncedSearch, index + 1],
+        (index) => ["cityPlace", debouncedSearch, index + 1],
         ([_, search, page]) => getCityPlace({ search, page }),
     );
 
@@ -63,6 +64,7 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => 
 
     return (
         <Select
+            {...field}
             value={value}
             onValueChange={(value) => {
                 const selectedCityPlace = cityPlaces.find((c) => c.id === value);

@@ -1,5 +1,6 @@
-import { createClient } from "@/lib/supabase"
+"use server";
 import { Availability } from "../types/availability"
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export async function fetchAvailabilities(props: {
   cityId?: string, 
@@ -7,7 +8,7 @@ export async function fetchAvailabilities(props: {
   endDate: Date
 }) {
   const { cityId, startDate, endDate } = props;
-  const supabase = createClient()
+  const supabase = await createServerSupabaseClient()
 
   const startIso = startDate.toISOString().split("T")[0]
   const endIso = endDate.toISOString().split("T")[0]
@@ -51,7 +52,7 @@ async function validateAvailability(props: {
     return { error: new Error("O horário de fim deve ser posterior ao horário de início.") }
   }
 
-  const supabase = createClient()
+  const supabase = await createServerSupabaseClient()
 
   const { data, error } = await supabase
     .from("availability")
@@ -82,7 +83,7 @@ export async function createAvailability(props: {
   startHour: string;
   endHour: string;
 }) {
-  const supabase = createClient()
+  const supabase = await createServerSupabaseClient()
 
   const { error: validateError } = await validateAvailability(props);
   if (validateError) return { error: validateError };
@@ -102,7 +103,7 @@ export async function updateAvailability(props: {
 }) {
   const { id, cityId, startHour, endHour } = props;
 
-  const supabase = createClient()
+  const supabase = await createServerSupabaseClient()
 
   const { error: validateError } = await validateAvailability(props);
   if (validateError) return { error: validateError };
@@ -117,7 +118,7 @@ export async function deleteAvailability(props: {
 }) {
   const { id } = props;
 
-  const supabase = createClient();
+  const supabase = await createServerSupabaseClient()
 
   const { error } = await supabase.from("availability").delete().eq("id", id);
 
