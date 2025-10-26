@@ -9,11 +9,17 @@ import { DialogClose } from "@radix-ui/react-dialog";
 import { Trash } from "lucide-react";
 
 export function ScheduleDeleteDialog({
-    schedule
+    schedule,
+    onSuccess,
+    defaultOpen,
+    onClose,
 } : {
     schedule: Schedule;
+    onSuccess?: () => void;
+    defaultOpen?: boolean;
+    onClose?: () => void;
 }) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(defaultOpen ?? false);
 
     const handleDelete = async () => {
         const { error } = await deleteSchedule({ id: schedule.id});
@@ -21,6 +27,8 @@ export function ScheduleDeleteDialog({
         if(!error){
             toast.success("Agendamento removido com sucesso!");
             setOpen(false);
+            onClose?.();
+            onSuccess?.();
             return;
         }
 
@@ -28,11 +36,19 @@ export function ScheduleDeleteDialog({
     }
 
     return(
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+            open={open}
+            onOpenChange={(open) => {
+                setOpen(open);
+                onClose?.();
+            }}
+        >
             <DialogTrigger asChild>
-                <Button variant="destructive" size="icon">
-                    <Trash/>
-                </Button>
+                {!defaultOpen ? (
+                    <Button variant="destructive" size="icon">
+                        <Trash/>
+                    </Button>
+                ) : null}
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>

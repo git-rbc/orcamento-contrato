@@ -39,7 +39,7 @@ export function SlotDeleteDialog({ open, onClose, slotId, onDeleted }: DeleteSlo
                     <Button variant="outline" onClick={onClose}>
                         Cancelar
                     </Button>
-                    <Button variant="destructive" onClick={handleDelete}>
+                    <Button onClick={handleDelete}>
                         Remover
                     </Button>
                 </DialogFooter>
