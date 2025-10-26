@@ -90,11 +90,11 @@ export default function AvailabilityPage() {
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <Label>Início</Label>
-          <DatePicker date={startDate} setDate={setStartDate} />
+          <DatePicker date={startDate} setDate={(date) => setStartDate(new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())))} />
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <Label>Fim</Label>
-          <DatePicker date={endDate} setDate={setEndDate} min={startDate} />
+          <DatePicker date={endDate} setDate={(date) => setEndDate(new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())))} min={startDate} />
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <Label>Cidade</Label>
@@ -143,7 +143,7 @@ export default function AvailabilityPage() {
                 const dateStr = d.toISOString().split("T")[0];
                 return (
                   <TableRow key={dateStr}>
-                    <TableCell className="border text-right">{d.toLocaleDateString()}</TableCell>
+                    <TableCell className="border text-right">{String(d.getDate()).padStart(2, "0")}/{String(d.getMonth() + 1).padStart(2, "0")}/{d.getFullYear()}</TableCell>
                     {vendors.map((v: any) => {
                       const slots = availabilities?.filter(a => a.vendorId === v.id && a.date === dateStr).sort((a, b) => a.startHour.localeCompare(b.startHour));
                       

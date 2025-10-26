@@ -205,7 +205,7 @@ export function ScheduleDialog({
                 <FormItem>
                   <FormLabel>Data</FormLabel>
                   <FormControl>
-                    <DatePicker date={field.value} setDate={field.onChange} />
+                    <DatePicker date={field.value} setDate={(date) => field.onChange(new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())))} />
                   </FormControl>
                   <FormMessage/>
                 </FormItem>
