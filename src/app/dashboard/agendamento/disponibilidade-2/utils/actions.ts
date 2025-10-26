@@ -28,6 +28,20 @@ export async function fetchAvailabilities(props: {
   return data as Availability[];
 }
 
+async function validateAvailabilitySchedule(props: {
+  id: string;
+}) {
+  const { id } = props;
+
+  const supabase = await createServerSupabaseClient();
+
+  const { data } = await supabase.from("availability").select("*, schedule(availabilityId)").eq("id", id);
+
+  if (data?.[0]?.schedule.length > 0) return { error: new Error("Slot possui agendamento vinculado") };
+
+  return { error: undefined };
+}
+
 async function validateAvailability(props: {
   id?: string;
   cityId: string;
@@ -105,6 +119,9 @@ export async function updateAvailability(props: {
 
   const supabase = await createServerSupabaseClient()
 
+  const { error: validateScheduleError } = await validateAvailabilitySchedule({ id });
+  if (validateScheduleError) return { error: validateScheduleError };
+
   const { error: validateError } = await validateAvailability(props);
   if (validateError) return { error: validateError };
 
@@ -118,7 +135,10 @@ export async function deleteAvailability(props: {
 }) {
   const { id } = props;
 
-  const supabase = await createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient();
+
+  const { error: validateScheduleError } = await validateAvailabilitySchedule({ id });
+  if (validateScheduleError) return { error: validateScheduleError };
 
   const { error } = await supabase.from("availability").delete().eq("id", id);
 
