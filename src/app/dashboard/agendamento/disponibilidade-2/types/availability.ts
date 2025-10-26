@@ -1,3 +1,4 @@
+import { Schedule } from "../../agendamentos/type/schedule"
 import { City } from "../../cidades/types/city"
 
 export interface Availability {
@@ -11,4 +12,5 @@ export interface Availability {
   updatedAt: string
   vendor?: any
   city?: City
+  schedule?: Schedule[]
 }

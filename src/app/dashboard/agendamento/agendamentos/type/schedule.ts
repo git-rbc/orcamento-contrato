@@ -9,6 +9,10 @@ export type Schedule = {
   cityPlaceId: string;
   availabilityId: string;
   date: Date;
+  preVendor?: any;
+  vendor?: any;
+  city?: any;
+  cityPlace?: any;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -15,6 +15,7 @@ import { useCopyPasteSlots } from "./utils/copy-paste-slots";
 import { Plus, X } from "lucide-react";
 import { colors } from "@/constants/colors";
 import { ScheduleDialog } from "../agendamentos/components/schedule-dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function AvailabilityPage() {
   const now = new Date();
@@ -84,7 +85,7 @@ export default function AvailabilityPage() {
     <div className="flex flex-col gap-4 w-full">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
         <h2 className="text-2xl font-bold">Disponibilidade</h2>
-        <ScheduleDialog customLabel="Novo Agendamento" />
+        <ScheduleDialog customLabel="Novo Agendamento" onSuccess={mutate} />
       </div>
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
@@ -165,32 +166,58 @@ export default function AvailabilityPage() {
                           data-selected-cell={isSelected ? 'true' : 'false'}
                         >
                           <div className="flex flex-row items-center justify-center flex-wrap gap-1">
-                            {slots.map((s, idx) => {
+                            {slots.map((s) => {
                               const color = cities.find((c) => c.id === s.cityId)?.color;
-                              return (
+                              const schedule = s.schedule?.[0];
+
+                              const slotButton = (
                                 <div
-                                  key={s.id || idx}
+                                  key={s.id}
                                   className={
-                                    "flex items-center gap-0.5 px-1 py-0.5 border rounded cursor-pointer transition-all hover:opacity-75 " +
-                                    (color ?? "")
+                                    "flex items-center gap-0.5 px-1 py-0.5 border rounded transition-all cursor-pointer select-none " +
+                                    (schedule ? `opacity-75 ${getColor("red")}` : `hover:opacity-75 ${color ?? ""}`)
                                   }
-                                  onClick={() => setDialogData(s)}
+                                  onClick={(ev) => {
+                                    ev.stopPropagation();
+                                    if (!schedule) setDialogData(s);
+                                  }}
                                 >
                                   <span className="font-medium text-[10px] leading-[14px]">{s.startHour}-{s.endHour}</span>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="!p-0 size-2 text-destructive hover:bg-destructive"
-                                    title="Excluir disponibilidade"
-                                    onClick={(ev) => {
-                                      ev.stopPropagation();
-                                      setDeleteData({ slotId: s.id });
-                                    }}
-                                  >
-                                    <X className="p-1"/>
-                                  </Button>
+                                  {!schedule && (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="!p-0 size-2 text-destructive hover:bg-destructive"
+                                      title="Excluir disponibilidade"
+                                      onClick={(ev) => {
+                                        ev.stopPropagation();
+                                        setDeleteData({ slotId: s.id });
+                                      }}
+                                    >
+                                      <X className="p-1"/>
+                                    </Button>
+                                  )}
                                 </div>
                               );
+
+                              if (schedule) {
+                                return (
+                                  <Popover key={s.id}>
+                                    <PopoverTrigger asChild>{slotButton}</PopoverTrigger>
+                                    <PopoverContent className="text-sm">
+                                      {schedule.externalCode && (<p><b>Código:</b> {schedule.externalCode}</p>)}
+                                      <p><b>Cliente:</b> {schedule.clientName}</p>
+                                      <p><b>Telefone:</b> {schedule.clientPhone}</p>
+                                      {schedule.preVendor?.nome && (<p><b>Pré-vendedor:</b> {schedule.preVendor.nome}</p>)}
+                                      {schedule.vendor?.nome && (<p><b>Vendedor:</b> {schedule.vendor.nome}</p>)}
+                                      {schedule.city?.name && (<p><b>Cidade:</b> {schedule.city.name}</p>)}
+                                      {schedule.cityPlace?.nome && (<p><b>Local:</b> {schedule.cityPlace.nome}</p>)}
+                                    </PopoverContent>
+                                  </Popover>
+                                );
+                              }
+
+                              return slotButton;
                             })}
                             <Button
                               size="sm"
