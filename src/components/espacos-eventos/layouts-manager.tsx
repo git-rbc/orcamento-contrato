@@ -57,7 +57,7 @@ export function LayoutsManager({ espacoId, layouts, onChange, espacoNome }: Layo
     };
 
     // Verificar se já existe este layout/pavimento
-    const exists = layouts.some(l => 
+    const exists = layouts?.some(l => 
       l.layout === newLayout.layout && 
       l.pavimento === newLayout.pavimento
     );
@@ -77,7 +77,7 @@ export function LayoutsManager({ espacoId, layouts, onChange, espacoNome }: Layo
   };
 
   const handleRemoveLayout = (index: number) => {
-    const newLayouts = layouts.filter((_, i) => i !== index);
+    const newLayouts = layouts?.filter((_, i) => i !== index);
     onChange(newLayouts);
   };
 
@@ -158,11 +158,11 @@ export function LayoutsManager({ espacoId, layouts, onChange, espacoNome }: Layo
         </div>
 
         {/* Lista de layouts configurados */}
-        {layouts.length > 0 && (
+        {layouts?.length > 0 && (
           <div className="space-y-2">
             <Label>Layouts Configurados</Label>
             <div className="space-y-2">
-              {layouts.map((layout, index) => {
+              {layouts?.map((layout, index) => {
                 const info = layoutInfo[layout.layout];
                 const Icon = info.icon;
                 
@@ -203,7 +203,7 @@ export function LayoutsManager({ espacoId, layouts, onChange, espacoNome }: Layo
           </div>
         )}
 
-        {layouts.length === 0 && (
+        {layouts?.length === 0 && (
           <div className="text-center py-6 text-muted-foreground">
             <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
             <p>Nenhum layout configurado ainda.</p>

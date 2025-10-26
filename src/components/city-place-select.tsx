@@ -7,21 +7,27 @@ import useSWRInfinite from "swr/infinite";
 import { ControllerRenderProps, RefCallBack } from "react-hook-form";
 
 type CityPlaceSelectProps = {
+    cityId?: string;
     ref?: RefCallBack;
     value: string;
     onSelect: (cityPlace: any) => void;
     field?: ControllerRenderProps;
+    dynamic?: boolean;
 }
 
-const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect, field }) => {
+const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ cityId, ref, value, onSelect, field, dynamic }) => {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
 
     const getCityPlace = async (props: {
+        cityId?: string;
+        dynamic?: boolean;
         search: string;
         page: number;
     }) => {
-        const { search, page } = props;
+        const { cityId, dynamic, search, page } = props;
+        if (dynamic && !cityId) return { data: [], pageTotal: 1 };
+
         const limit = 10;
         const supabase = createClient();
 
@@ -31,6 +37,7 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect, field
         let query = supabase.from("espacos_eventos").select("*", { count: "exact" });
 
         if (search) query = query.ilike("nome", `%${search}%`);
+        if (cityId) query = query.eq("cityId", cityId);
 
         const { data, error, count } = await query.range(from, to);
 
@@ -40,8 +47,8 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect, field
     }
 
     const { data, error, isLoading, size, setSize } = useSWRInfinite(
-        (index) => ["cityPlace", debouncedSearch, index + 1],
-        ([_, search, page]) => getCityPlace({ search, page }),
+        (index) => ["cityPlace", cityId, dynamic, debouncedSearch, index + 1],
+        ([_, cityId, dynamic, search, page]) => getCityPlace({ cityId, dynamic, search, page }),
     );
 
     const pageTotal = useMemo(() => {

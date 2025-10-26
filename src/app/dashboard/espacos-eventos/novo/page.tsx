@@ -15,10 +15,12 @@ import { ArrowLeft, Building2, Save } from 'lucide-react';
 import Link from 'next/link';
 import { LayoutsManager } from '@/components/espacos-eventos/layouts-manager';
 import { toast } from 'sonner';
+import { CitySelect } from '@/components/city-select';
 
 interface FormData {
   nome: string;
   cidade: string;
+  cityId: string;
   capacidade_maxima: string;
   descricao: string;
   tem_espaco_kids: boolean;
@@ -39,6 +41,7 @@ export default function NovoEspacoEventoPage() {
   const [formData, setFormData] = useState<FormData>({
     nome: '',
     cidade: '',
+    cityId: '',
     capacidade_maxima: '',
     descricao: '',
     tem_espaco_kids: true,
@@ -54,7 +57,7 @@ export default function NovoEspacoEventoPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.nome || !formData.cidade || !formData.capacidade_maxima) {
+    if (!formData.nome || !formData.cidade || !formData.cityId || !formData.capacidade_maxima) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -124,15 +127,6 @@ export default function NovoEspacoEventoPage() {
     'Clássico'
   ];
 
-  const cidades = [
-    'Itapema',
-    'Nova Veneza',
-    'Siderópolis',
-    'Blumenau',
-    'Joinville',
-    'Florianópolis'
-  ];
-
   return (
     <div className="container mx-auto py-6 space-y-6">
       {/* Header */}
@@ -178,21 +172,7 @@ export default function NovoEspacoEventoPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="cidade">Cidade *</Label>
-                <Select 
-                  value={formData.cidade} 
-                  onValueChange={(value) => handleInputChange('cidade', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a cidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cidades.map((cidade) => (
-                      <SelectItem key={cidade} value={cidade}>
-                        {cidade}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CitySelect value={formData.cityId} onSelect={(city) => setFormData((p) => ({...p, cidade: city.name, cityId: city.id}))}/>
               </div>
             </div>
 

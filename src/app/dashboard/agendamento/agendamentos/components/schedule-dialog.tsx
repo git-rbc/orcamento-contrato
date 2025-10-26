@@ -95,8 +95,12 @@ export function ScheduleDialog({
   }
 
   useEffect(() => {
-    form.setValue("availabilityId", undefined);
+    form.setValue("availabilityId", "");
   }, [vendorId, cityId, date]);
+
+  useEffect(() => {
+    form.setValue("cityPlaceId", "");
+  }, [cityId]);
 
   return (
     <Dialog
@@ -209,7 +213,7 @@ export function ScheduleDialog({
                 <FormItem>
                   <FormLabel>Local</FormLabel>
                   <FormControl>
-                    <CityPlaceSelect value={field.value} onSelect={(cityPlace) => field.onChange(cityPlace.id)} field={field}/>
+                    <CityPlaceSelect cityId={cityId} value={field.value} onSelect={(cityPlace) => field.onChange(cityPlace.id)} field={field} dynamic/>
                   </FormControl>
                   <FormMessage/>
                 </FormItem>
