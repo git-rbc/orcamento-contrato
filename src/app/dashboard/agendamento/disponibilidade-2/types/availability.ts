@@ -1,4 +1,4 @@
-import { Schedule } from "../../agendamentos/type/schedule"
+import { Schedule } from "../../agendamentos/types/schedule"
 import { City } from "../../cidades/types/city"
 
 export interface Availability {

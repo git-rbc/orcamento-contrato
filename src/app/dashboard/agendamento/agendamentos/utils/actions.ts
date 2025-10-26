@@ -1,6 +1,30 @@
 "use server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { revalidatePath } from "next/cache";
+import { Schedule } from "../types/schedule";
+
+export async function getSchedule(props: {
+    search?: string;
+    page?: number,
+    limit?: number,
+}) {
+    const { search, page = 1, limit = 10 } = props;
+
+    const supabase = await createServerSupabaseClient();
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    let query = supabase.from("schedule").select("*, preVendor:preVendorId(*), vendor:vendorId(*), city(*), cityPlace:espacos_eventos(*)", { count: "exact" });
+
+    if (search) {
+      query = query.or(`clientName.ilike.%${search}%,clientPhone.ilike.%${search}%`)
+    }
+
+    const { data, error, count } = await query.range(from, to);
+
+    return { data: data as Schedule[], error, pageTotal: Math.ceil(count / limit) || 1};
+}
 
 async function validateSchedule(props: {
   availabilityId: string;
@@ -60,6 +84,20 @@ export async function updateSchedule(props: {
     if (validateError) return { error: validateError };
 
     const { error } = await supabase.from('schedule').update(values).eq('id', id);
+
+    if (!error) revalidatePath("/dashboard/agendamento/agendamentos");
+
+    return { error };
+}
+
+export async function deleteSchedule(props: {
+    id: string;
+}) {
+    const { id } = props;
+
+    const supabase = await createServerSupabaseClient();
+
+    const { error } = await supabase.from('schedule').delete().eq('id', id);
 
     if (!error) revalidatePath("/dashboard/agendamento/agendamentos");
 

@@ -8,7 +8,7 @@ export type Schedule = {
   cityId: string;
   cityPlaceId: string;
   availabilityId: string;
-  date: Date;
+  date: string;
   preVendor?: any;
   vendor?: any;
   city?: any;

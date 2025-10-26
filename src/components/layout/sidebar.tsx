@@ -38,7 +38,8 @@ import {
   Briefcase,
   Map,
   MapPin,
-  SquareUserRound
+  SquareUserRound,
+  CalendarSearch
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -122,6 +123,13 @@ const AVAILABLE_MENUS: MenuItem[] = [
         href: '/dashboard/agendamento/disponibilidade-2',
         icon: 'Clock',
         description: 'Disponibilidade dos vendedores por cidade'
+      },
+      {
+        title: 'Agendamentos',
+        slug: 'schedules',
+        href: '/dashboard/agendamento/agendamentos',
+        icon: 'CalendarSearch',
+        description: 'Agendamentos criados'
       },
     ]
   },
@@ -291,6 +299,7 @@ const iconMap: Record<string, any> = {
   Tag,
   Calendar,
   Clock,
+  CalendarSearch,
   Ban,
   BarChart3,
   Timer,

@@ -42,8 +42,8 @@ const SlotSelect: FC<SlotSelectProps> = ({ vendorId, cityId, date, ref, value, o
     const { data, error, count } = await query.range(from, to);
 
     if (error) throw new Error(error.message);
-  
-    return { data: data.filter((a) => a.schedule.length === 0), pageTotal: Math.ceil(count / limit) || 1 };
+
+    return { data: data.filter((a) => a.schedule.length === 0 || a.id === value), pageTotal: Math.ceil(count / limit) || 1 };
   }
 
   const { data, error, isLoading, size, setSize } = useSWRInfinite(
