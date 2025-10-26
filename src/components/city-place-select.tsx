@@ -4,15 +4,16 @@ import { FC, UIEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Input } from "./ui/input";
 import useSWRInfinite from "swr/infinite";
-import { RefCallBack } from "react-hook-form";
+import { ControllerRenderProps, RefCallBack } from "react-hook-form";
 
 type CityPlaceSelectProps = {
     ref?: RefCallBack;
     value: string;
     onSelect: (cityPlace: any) => void;
+    field?: ControllerRenderProps;
 }
 
-const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => {
+const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect, field }) => {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -27,9 +28,9 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => 
         const from = (page - 1) * limit;
         const to = from + limit - 1;
 
-        let query = supabase.from("cityPlace").select("*", { count: "exact" });
+        let query = supabase.from("espacos_eventos").select("*", { count: "exact" });
 
-        if (search) query = query.ilike("name", `%${search}%`);
+        if (search) query = query.ilike("nome", `%${search}%`);
 
         const { data, error, count } = await query.range(from, to);
 
@@ -63,6 +64,7 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => 
 
     return (
         <Select
+            {...field}
             value={value}
             onValueChange={(value) => {
                 const selectedCityPlace = cityPlaces.find((c) => c.id === value);
@@ -90,7 +92,7 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ ref, value, onSelect }) => 
                     )}
 
                     {cityPlaces.map((cityPlace: any) => (
-                        <SelectItem key={cityPlace.id} value={cityPlace.id}>{cityPlace.name}</SelectItem>
+                        <SelectItem key={cityPlace.id} value={cityPlace.id}>{cityPlace.nome}</SelectItem>
                     ))}
 
                     {isLoading && <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"/>}

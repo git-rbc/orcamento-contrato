@@ -14,6 +14,7 @@ import { Availability } from "./types/availability";
 import { useCopyPasteSlots } from "./utils/copy-paste-slots";
 import { Plus, X } from "lucide-react";
 import { colors } from "@/constants/colors";
+import { ScheduleDialog } from "../agendamentos/components/schedule-dialog";
 
 export default function AvailabilityPage() {
   const now = new Date();
@@ -41,7 +42,7 @@ export default function AvailabilityPage() {
   const { data: availabilities, isLoading, mutate } = useSWR(
     ["availability", cityId, startDate, endDate],
     ([_, cityId, startDate, endDate]) => fetchAvailabilities({ cityId, startDate, endDate })
-  )
+  );
 
   const { handleKeyDown } = useCopyPasteSlots(cityId, mutate);
 
@@ -49,7 +50,7 @@ export default function AvailabilityPage() {
     let base = color;
     if (!base) base = colors[Math.floor(Math.random() * colors.length)];
     return `bg-${base}-100 text-${base}-800 border-${base}-300`;
-  }
+  };
 
   useEffect(() => {
     if (!availabilities) return;
@@ -83,6 +84,7 @@ export default function AvailabilityPage() {
     <div className="flex flex-col gap-4 w-full">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
         <h2 className="text-2xl font-bold">Disponibilidade</h2>
+        <ScheduleDialog customLabel="Novo Agendamento" />
       </div>
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
@@ -203,7 +205,7 @@ export default function AvailabilityPage() {
                                   endHour: "",
                                   createdAt: "",
                                   updatedAt: "",
-                                })
+                                });
                               }}
                               className="!size-6"
                             >
