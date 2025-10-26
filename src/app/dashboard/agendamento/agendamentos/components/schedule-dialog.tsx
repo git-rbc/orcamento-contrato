@@ -1,5 +1,6 @@
+"use client";
 import { z } from "zod";
-import { Schedule } from "../type/schedule";
+import { Schedule } from "../types/schedule";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -51,7 +52,7 @@ export function ScheduleDialog({
       vendorId: schedule?.vendorId ?? "",
       cityId: schedule?.cityId ?? "",
       cityPlaceId: schedule?.cityPlaceId ?? "",
-      date: schedule?.date,
+      date: schedule?.date ? new Date(schedule.date) : undefined,
       availabilityId: schedule?.availabilityId ?? "",
     },
   });
