@@ -184,7 +184,8 @@ export default function AvailabilityPage() {
                                           "flex items-center gap-0.5 px-1 py-0.5 border rounded transition-all cursor-pointer select-none " +
                                           (schedule ? `opacity-75 ${getColor("red")}` : `hover:opacity-75 ${color ?? ""}`)
                                         }
-                                        onClick={() => {
+                                        onClick={(ev) => {
+                                          ev.stopPropagation();
                                           if (schedule) setSchedulePopover(s.id);
                                           else setDialogData(s);
                                         }}
@@ -196,7 +197,8 @@ export default function AvailabilityPage() {
                                             variant="ghost"
                                             className="!p-0 size-2 text-destructive hover:bg-destructive"
                                             title="Excluir disponibilidade"
-                                            onClick={() => {
+                                            onClick={(ev) => {
+                                              ev.stopPropagation();
                                               setDeleteData({ slotId: s.id });
                                             }}
                                           >
