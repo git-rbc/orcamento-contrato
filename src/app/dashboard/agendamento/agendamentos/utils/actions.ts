@@ -35,8 +35,8 @@ async function validateSchedule(props: {
 
   const { data } = await supabase.from("availability").select("*, schedule(availabilityId)").eq("id", availabilityId);
 
-  if (!data) return { error: new Error("Slot não encontrado") };
-  if (data[0].schedule.length > 0) return { error: new Error("Slot já possui agendamento") };
+  if (!data) return { error: new Error("Horário não encontrado") };
+  if (data[0].schedule.length > 0) return { error: new Error("Horário já possui agendamento") };
 
   return { error: undefined };
 }

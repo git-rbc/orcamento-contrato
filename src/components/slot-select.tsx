@@ -74,7 +74,7 @@ const SlotSelect: FC<SlotSelectProps> = ({ vendorId, cityId, date, ref, value, o
       }}
     >
       <SelectTrigger ref={ref}>
-        <SelectValue placeholder="Selecione uma slot"/>
+        <SelectValue placeholder="Selecione um horário"/>
       </SelectTrigger>
       <SelectContent>
         <div onScroll={handleScroll} className="max-h-64 overflow-y-auto">

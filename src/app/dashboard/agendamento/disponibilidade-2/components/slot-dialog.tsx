@@ -62,8 +62,8 @@ export function SlotDialog({
     if (!error) {
       if (!availability.id) form.reset();
       toast.success(availability.id
-        ? "Slot atualizado com sucesso!"
-        : "Slot criado com sucesso!"
+        ? "Disponibilidade atualizada com sucesso!"
+        : "Disponibilidade criada com sucesso!"
       );
       onClose();
       onCreateOrUpdate();
@@ -81,7 +81,7 @@ export function SlotDialog({
             {availability.id ? "Atualizar" : "Criar"} Slot
           </DialogTitle>
           <DialogDescription>
-            {availability.id ? "Atualiza as informações do slot" : "Crie um novo slot"} para agendemento
+            {availability.id ? "Atualiza as informações da disponibilidade" : "Crie uma nova disponibilidade"} para agendemento
           </DialogDescription>
         </DialogHeader>
 

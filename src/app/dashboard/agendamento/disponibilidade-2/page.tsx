@@ -209,10 +209,10 @@ export default function AvailabilityPage() {
                                     </ContextMenuTrigger>
                                     <ContextMenuContent>
                                       <ContextMenuItem onClick={() => setDialogData(s)} disabled={schedule !== undefined}>
-                                        Editar Slot
+                                        Editar Disponibilidade
                                       </ContextMenuItem>
                                       <ContextMenuItem onClick={() => setDeleteData({ slotId: s.id })} disabled={schedule !== undefined}>
-                                        Remover Slot
+                                        Remover Disponibilidade
                                       </ContextMenuItem>
                                       <ContextMenuSeparator/>
                                       <ContextMenuItem onClick={() => setScheduleData(schedule)} disabled={schedule === undefined}>

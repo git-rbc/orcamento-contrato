@@ -16,7 +16,7 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
 
     const slots = selected.getAttribute("data-slots");
     if (!slots) {
-      toast.error("Nenhum slot encontrado para copiar.");
+      toast.error("Nenhuma disponibilidade encontrada para copiar.");
       return;
     }
 
@@ -27,16 +27,16 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
         endHour: s.endHour,
       }));
       setCopiedSlots(formatted);
-      toast.success("Slots copiados com sucesso!");
+      toast.success("Disponibilidades copiadas com sucesso!");
       return;
     }
 
-    toast.error("Nenhum slot válido para copiar.");
+    toast.error("Nenhuma disponibilidade válida para copiar.");
   };
 
   const handlePaste = async (selected: HTMLElement | null) => {
     if (!copiedSlots || !copiedSlots.length) {
-      toast.error("Nenhum slot copiado para colar.");
+      toast.error("Nenhuma disponibilidade copiada para colar.");
       return;
     }
 
@@ -90,7 +90,7 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
     });
 
     if (anySuccess) {
-      toast.success("Slots colados com sucesso!");
+      toast.success("Disponibilidades coladas com sucesso!");
       onCreated?.();
     }
   };

@@ -17,7 +17,7 @@ export function SlotDeleteDialog({ open, onClose, slotId, onDeleted }: DeleteSlo
         const { error } = await deleteAvailability({ id: slotId});
 
         if(!error){
-            toast.success("Slot removido com sucesso!");
+            toast.success("Disponibilidade removida com sucesso!");
             onDeleted();
             onClose();
             return;
@@ -30,10 +30,10 @@ export function SlotDeleteDialog({ open, onClose, slotId, onDeleted }: DeleteSlo
         <Dialog open={open} onOpenChange={onClose}>
             <DialogContent>
                 <DialogHeader>  
-                    <DialogTitle>Remover slot</DialogTitle>
+                    <DialogTitle>Remover Disponibilidade</DialogTitle>
                 </DialogHeader>
                 <DialogDescription>  
-                    Está ação não pode ser revertida e irá remover o slot permanentemente do sistema.
+                    Está ação não pode ser revertida e irá remover a disponibilidade permanentemente do sistema.
                 </DialogDescription>
                 <DialogFooter className="flex justify-end gap-2 mt-4">
                     <Button variant="outline" onClick={onClose}>

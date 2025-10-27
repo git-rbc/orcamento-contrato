@@ -237,7 +237,7 @@ export function ScheduleDialog({
               name="availabilityId"
               render={({field}) => (
                 <FormItem>
-                  <FormLabel>Slot</FormLabel>
+                  <FormLabel>Horário</FormLabel>
                   <FormControl>
                     <SlotSelect 
                       vendorId={vendorId}

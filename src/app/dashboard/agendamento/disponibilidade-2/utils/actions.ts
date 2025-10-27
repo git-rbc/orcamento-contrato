@@ -37,7 +37,7 @@ async function validateAvailabilitySchedule(props: {
 
   const { data } = await supabase.from("availability").select("*, schedule(availabilityId)").eq("id", id);
 
-  if (data?.[0]?.schedule.length > 0) return { error: new Error("Slot possui agendamento vinculado") };
+  if (data?.[0]?.schedule.length > 0) return { error: new Error("Horário possui agendamento vinculado") };
 
   return { error: undefined };
 }
