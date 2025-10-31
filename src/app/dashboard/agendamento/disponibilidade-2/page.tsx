@@ -46,10 +46,37 @@ export default function AvailabilityPage() {
     return Math.round((endUTC - startUTC) / (1000 * 60 * 60 * 24)) + 1;
   }, [startDate, endDate]);
 
+  const { data: events, error: eventsError, isLoading: eventsLoading } = useSWR(
+    ["events", startDate, endDate],
+    async ([_, startDate, endDate]) => {
+      const start = startDate.toISOString().split("T")[0];
+      const end = endDate.toISOString().split("T")[0];
+      const response = await fetch(
+        `https://n8n.eventosindaia.com.br/webhook/agendamentos/eventos?startDate=${start}&endDate=${end}`, 
+        {
+          method: "GET",
+        }
+      )
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.message ?? "Erro ao buscar eventos");
+      return json;
+    }, {
+      revalidateOnFocus: false,
+      refreshInterval: 0,
+    }
+  )
+  console.log(events, eventsError, eventsLoading);
+
   const { data: availabilities, isLoading, mutate } = useSWR(
-    ["availability", cityId, startDate, endDate],
-    ([_, cityId, startDate, endDate]) => fetchAvailabilities({ cityId, startDate, endDate })
+    ["availability", startDate, endDate],
+    ([_, startDate, endDate]) => fetchAvailabilities({ startDate, endDate })
   );
+
+  const filteredAvailabilities = useMemo(() => {
+    let result = availabilities ?? [];
+    if (cityId) result = result.filter((r) => r.cityId === cityId);
+    return result;
+  }, [availabilities, cityId]);
 
   const { handleKeyDown } = useCopyPasteSlots(cityId, mutate);
 
@@ -117,11 +144,14 @@ export default function AvailabilityPage() {
       </div>
 
       <div className="flex flex-row items-center gap-2">
-        {cities.map((city) => (
-          <div key={city.id} className={`${city.color} border rounded-md px-2 py-0.5 text-sm`}>
-            {city.name}
-          </div>
-        ))}
+        {cities.map((city) => {
+          if (cityId && city.id !== cityId) return null;
+          return (
+            <div key={city.id} className={`${city.color} border rounded-md px-2 py-0.5 text-sm`}>
+              {city.name}
+            </div>
+          );
+        })}
       </div>
 
       {isLoading ? (
@@ -136,6 +166,7 @@ export default function AvailabilityPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="border w-28 min-w-28 text-right">Data</TableHead>
+                <TableHead className="border w-28 min-w-28 text-center">Eventos</TableHead>
                 {vendors.map((v: any) => (
                   <TableHead key={v.id} className="border w-96 min-w-96 text-center">
                     {v.nome || "Sem nome"}
@@ -148,11 +179,38 @@ export default function AvailabilityPage() {
                 const d = new Date(startDate);
                 d.setDate(d.getDate() + i);
                 const dateStr = d.toISOString().split("T")[0];
+                const dateStrBr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+                const eventsOnDate = events?.filter((event) => event["Data Realização"] === dateStrBr);
                 return (
                   <TableRow key={dateStr}>
-                    <TableCell className="border text-right">{String(d.getDate()).padStart(2, "0")}/{String(d.getMonth() + 1).padStart(2, "0")}/{d.getFullYear()}</TableCell>
+                    <TableCell className="border text-right">{dateStrBr}</TableCell>
+                    <TableCell className="border text-center">
+                      {eventsLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary self-center"/>
+                      ) : eventsError ? (
+                        <p className="text-destructive font-medium">{eventsError.message ?? "Falha ao carregar"}</p>
+                      ) : (
+                        eventsOnDate.length > 0 ? (
+                          <Popover>
+                            <PopoverTrigger>
+                              {`${eventsOnDate.length} Evento(s)`}
+                            </PopoverTrigger>
+                            <PopoverContent className="items-center max-h-64 max-w-64 p-0 overflow-y-auto">
+                              {eventsOnDate.map((event, index) => (
+                                <p key={index} className={`${index > 0 ? "border-t" : ""} py-1 px-2 text-center`}>
+                                  {event["Local do Evento"]}
+                                  {event["Cerimônia Externa - Canto da Lagoa"] ? ` (${event["Cerimônia Externa - Canto da Lagoa"]})` : ""}
+                                </p>
+                              ))}
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          "-"
+                        )
+                      )} 
+                    </TableCell>
                     {vendors.map((v: any) => {
-                      const slots = availabilities?.filter(a => a.vendorId === v.id && a.date === dateStr).sort((a, b) => a.startHour.localeCompare(b.startHour));
+                      const slots = filteredAvailabilities?.filter(a => a.vendorId === v.id && a.date === dateStr).sort((a, b) => a.startHour.localeCompare(b.startHour));
                       
                       const cellId = v.id + "-" + dateStr;
                       const isSelected = selectedCell === cellId;
