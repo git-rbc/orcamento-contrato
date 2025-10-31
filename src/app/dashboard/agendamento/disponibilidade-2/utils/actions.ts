@@ -3,26 +3,21 @@ import { Availability } from "../types/availability"
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export async function fetchAvailabilities(props: {
-  cityId?: string, 
   startDate: Date,
   endDate: Date
 }) {
-  const { cityId, startDate, endDate } = props;
+  const { startDate, endDate } = props;
   const supabase = await createServerSupabaseClient()
 
   const startIso = startDate.toISOString().split("T")[0]
   const endIso = endDate.toISOString().split("T")[0]
   
-  const query = supabase
+  const { data, error } = await  supabase
     .from("availability")
     .select("*, vendor: users(*), city(*), schedule(*, preVendor:preVendorId(*), vendor:vendorId(*), city(*), cityPlace:espacos_eventos(*))")
     .gte("date", startIso)
     .lte("date", endIso)
-
-  if (cityId) query.eq("cityId", cityId)
-
-  const { data, error } = await query;
-
+    
   if (error) throw new Error(error.message)
 
   return data as Availability[];
