@@ -15,10 +15,12 @@ export function DatePicker({
   date,
   setDate,
   min,
+  max,
 } : {
   date?: Date;
   setDate: (date?: Date) => void;
   min?: Date;
+  max?: Date;
 }) {
   return (
     <Popover>
@@ -38,7 +40,7 @@ export function DatePicker({
           selected={date}
           onSelect={setDate}
           disabled={[
-            { before: min }
+            { before: min, after: max }
           ]}
         />
       </PopoverContent>
