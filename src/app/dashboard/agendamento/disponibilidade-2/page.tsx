@@ -4,7 +4,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { VendorMultiSelect } from "@/components/vendor-multi-select";
 import { useState, useMemo, useEffect } from "react";
-import { fetchAvailabilities } from "./utils/actions";
+import { createAvailabilityPriority, fetchAvailabilities } from "./utils/actions";
 import { SlotDialog } from "./components/slot-dialog";
 import { SlotDeleteDialog } from "./components/slot-delete-dialog";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import useSWR from "swr";
 import { Availability } from "./types/availability";
 import { useCopyPasteSlots } from "./utils/copy-paste-slots";
-import { Plus, X } from "lucide-react";
+import { Plus, Trash, X } from "lucide-react";
 import { colors } from "@/constants/colors";
 import { ScheduleDialog } from "../agendamentos/components/schedule-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,11 +20,18 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { Schedule } from "../agendamentos/types/schedule";
 import { ScheduleDeleteDialog } from "../agendamentos/components/schedule-delete-dialog";
 import { City } from "../cidades/types/city";
+import { createClient } from "@/lib/supabase";
+import { toast } from "sonner";
+import { PriorityDeleteDialog } from "./components/priority-delete-dialog";
+import { useUser } from "@/hooks/useUser";
 
 export default function AvailabilityPage() {
   const now = new Date();
   const threeDaysAgo = new Date(new Date(now).setDate(now.getDate() - 3));
   const sevenDaysAfter = new Date(new Date(now).setDate(now.getDate() + 7));
+
+  const { user } = useUser();
+
   const [startDate, setStartDate] = useState<Date>(threeDaysAgo);
   const [endDate, setEndDate] = useState<Date>(sevenDaysAfter);
   const [city, setCity] = useState<City>();
@@ -35,6 +42,8 @@ export default function AvailabilityPage() {
   const [scheduleData, setScheduleData] = useState<Schedule | null>(null);
   const [deleteScheduleData, setScheduleDeleteData] = useState<Schedule | null>(null);
   const [schedulePopover, setSchedulePopover] = useState<string>();
+  const [deletePriorityData, setDeletePriorityData] = useState<{ priorityId: string } | null>(null);
+  const [priorityPopover, setPriorityPopover] = useState<string>();
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
 
   const cityId = useMemo(() => city?.id, [city]);
@@ -88,6 +97,21 @@ export default function AvailabilityPage() {
 
   const { handleKeyDown } = useCopyPasteSlots(cityId, mutate);
 
+  const handleRequestPriority = async (availabilityId: string) => {
+    const supabase = createClient();
+    const user = await supabase.auth.getUser();
+
+    const { error } = await createAvailabilityPriority({ availabilityId, userId: user.data.user.id });
+
+    if (!error) {
+      toast.success("Reserva efetuada com sucesso!");
+      mutate();
+      return;
+    }
+
+    toast.error(error.message);
+  }
+
   const getColor = (color?: string) => {
     let base = color;
     if (!base) base = colors[Math.floor(Math.random() * colors.length)];
@@ -132,7 +156,7 @@ export default function AvailabilityPage() {
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <Label>Início</Label>
-          <DatePicker date={startDate} setDate={(date) => setStartDate(new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())))} />
+          <DatePicker date={startDate} setDate={(date) => setStartDate(new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())))} max={endDate} />
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <Label>Fim</Label>
@@ -247,8 +271,9 @@ export default function AvailabilityPage() {
                             {slots.map((s) => {
                               const color = cities.find((c) => c.id === s.cityId)?.color;
                               const schedule = s.schedule?.[0];
+                              const hasPriority = s.availabilityPriority && s.availabilityPriority.length > 0 && schedule === undefined;
                               return (
-                                <div key={s.id} className="relative">
+                                <div key={s.id} className={`rounded ${hasPriority ? "ring-2 ring-orange-500" : "ring-0"}`}>
                                   <ContextMenu modal={false}>
                                     <ContextMenuTrigger asChild>
                                       <div
@@ -287,6 +312,13 @@ export default function AvailabilityPage() {
                                         Remover Disponibilidade
                                       </ContextMenuItem>
                                       <ContextMenuSeparator/>
+                                      <ContextMenuItem onClick={() => handleRequestPriority(s.id)} disabled={schedule !== undefined}>
+                                        Reservar
+                                      </ContextMenuItem>
+                                      <ContextMenuItem onClick={() => setTimeout(() => setPriorityPopover(s.id), 300)} disabled={!hasPriority}>
+                                        Ver Reservas
+                                      </ContextMenuItem>
+                                      <ContextMenuSeparator/>
                                       <ContextMenuItem onClick={() => setScheduleData(schedule)} disabled={schedule === undefined}>
                                         Editar Agendamento
                                       </ContextMenuItem>
@@ -312,6 +344,37 @@ export default function AvailabilityPage() {
                                         {schedule.vendor?.nome && (<p><b>Vendedor:</b> {schedule.vendor.nome}</p>)}
                                         {schedule.city?.name && (<p><b>Cidade:</b> {schedule.city.name}</p>)}
                                         {schedule.cityPlace?.nome && (<p><b>Local:</b> {schedule.cityPlace.nome}</p>)}
+                                      </PopoverContent>
+                                    </Popover>
+                                  )}
+
+                                  {hasPriority && (
+                                    <Popover open={priorityPopover === s.id} onOpenChange={() => setPriorityPopover(undefined)}>
+                                      <PopoverTrigger asChild>
+                                        <button
+                                          className="absolute top-0 left-0 w-full h-full"
+                                          style={{ pointerEvents: "none" }}
+                                        />
+                                      </PopoverTrigger>
+                                      <PopoverContent className="flex flex-col gap-2 text-sm max-h-64 overflow-y-auto">
+                                        {s.availabilityPriority.map((ap) => (
+                                          <div key={ap.id} className="flex flex-row items-center justify-between gap-4">
+                                            <div>
+                                              <p>{ap.user.nome}</p>
+                                              <p className="text-gray-400 text-xs">{new Date(ap.createdAt).toLocaleDateString()} {new Date(ap.createdAt).toLocaleTimeString()}</p>
+                                            </div>
+                                            {user?.id === ap.userId && (
+                                              <Button
+                                                variant="destructive" 
+                                                size="icon"
+                                                className="!h-7 !w-7"
+                                                onClick={() => setDeletePriorityData({ priorityId: ap.id })}
+                                              >
+                                                <Trash/>
+                                              </Button>
+                                            )}
+                                          </div>
+                                        ))}
                                       </PopoverContent>
                                     </Popover>
                                   )}
@@ -380,6 +443,15 @@ export default function AvailabilityPage() {
               onSuccess={mutate}
               defaultOpen={deleteScheduleData !== null}
               onClose={() => setScheduleDeleteData(null)}
+            />
+          )}
+
+          {deletePriorityData && (
+            <PriorityDeleteDialog
+              open={!!deletePriorityData}
+              onClose={() => setDeletePriorityData(null)}
+              priorityId={deletePriorityData.priorityId}
+              onDeleted={mutate}
             />
           )}
         </div>

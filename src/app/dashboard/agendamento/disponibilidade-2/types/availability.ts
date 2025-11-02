@@ -1,6 +1,15 @@
 import { Schedule } from "../../agendamentos/types/schedule"
 import { City } from "../../cidades/types/city"
 
+export interface AvailabilityPriority {
+  id: string
+  availabilityId: string
+  userId: string
+  createdAt: string
+  updatedAt: string
+  user?: any;
+}
+
 export interface Availability {
   id: string
   vendorId: string
@@ -13,4 +22,5 @@ export interface Availability {
   vendor?: any
   city?: City
   schedule?: Schedule[]
+  availabilityPriority?: AvailabilityPriority[]
 }
