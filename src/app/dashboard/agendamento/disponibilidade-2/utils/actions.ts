@@ -14,7 +14,7 @@ export async function fetchAvailabilities(props: {
   
   const { data, error } = await  supabase
     .from("availability")
-    .select("*, vendor: users(*), city(*), schedule(*, preVendor:preVendorId(*), vendor:vendorId(*), city(*), cityPlace:espacos_eventos(*))")
+    .select("*, vendor: users(*), city(*), schedule(*, preVendor:preVendorId(*), vendor:vendorId(*), city(*), cityPlace:espacos_eventos(*)), availabilityPriority(*, user: users(*))")
     .gte("date", startIso)
     .lte("date", endIso)
     
@@ -136,6 +136,29 @@ export async function deleteAvailability(props: {
   if (validateScheduleError) return { error: validateScheduleError };
 
   const { error } = await supabase.from("availability").delete().eq("id", id);
+
+  return { error };
+}
+
+export async function createAvailabilityPriority(props: {
+  availabilityId: string;
+  userId: string;
+}) {
+  const supabase = await createServerSupabaseClient()
+
+  const { error } = await supabase.from("availabilityPriority").insert(props);
+
+  return { error };
+}
+
+export async function deleteAvailabilityPriority(props: {
+  id: string;
+}) {
+  const { id } = props;
+
+  const supabase = await createServerSupabaseClient()
+
+  const { error } = await supabase.from("availabilityPriority").delete().eq("id", id);
 
   return { error };
 }
