@@ -4,17 +4,41 @@ import { SearchInput } from "@/components/ui/search-input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScheduleDialog } from "./components/schedule-dialog";
 import { ScheduleDeleteDialog } from "./components/schedule-delete-dialog";
+import { ScheduleFilters } from "./components/schedule-filters";
 
 export default async function SchedulePage(props: {
     searchParams?: Promise<{
-        search?: string;
-        page?: string;
+      search?: string;
+      page?: string;
+      preVendorId?: string;
+      vendorId?: string;
+      cityId?: string;
+      cityPlaceId?: string;
+      startDate?: string;
+      endDate?: string;
     }>;
 }) {
     const searchParams = await props.searchParams;
     const search = searchParams.search;
     const page = Number(searchParams.page || "1");
-    const { data, error, pageTotal } = await getSchedule({search, page});
+
+    const preVendorId = searchParams.preVendorId;
+    const vendorId = searchParams.vendorId;
+    const cityId = searchParams.cityId;
+    const cityPlaceId = searchParams.cityPlaceId;
+    const startDate = searchParams.startDate;
+    const endDate = searchParams.endDate;
+    
+    const { data, error, pageTotal } = await getSchedule({
+      search,
+      page,
+      preVendorId,
+      vendorId,
+      cityId,
+      cityPlaceId,
+      startDate,
+      endDate,
+    });
 
     const formatDate = (date: string) => {
       const parts = date.split("-");
@@ -31,12 +55,13 @@ export default async function SchedulePage(props: {
           <h2 className="text-2xl font-bold">Agendamentos</h2>
           <div className="flex flex-col md:flex-row items-center gap-4 md:gap-2 w-full md:w-auto">
             <SearchInput
-            placeholder="Pesquise pela agendamento"
-            className="w-full md:w-auto"
+              placeholder="Pesquise pela agendamento"
+              className="w-full md:w-auto"
             />
             <ScheduleDialog/>
           </div>
         </div>
+        <ScheduleFilters/>
         <div className="border rounded-md">
           <Table>
             <TableHeader>
@@ -72,9 +97,9 @@ export default async function SchedulePage(props: {
             </TableBody>
           </Table>
         </div>
-            <div>
-                <PaginationInput page={page} pageTotal={pageTotal}/>
-            </div>
+        <div>
+          <PaginationInput page={page} pageTotal={pageTotal}/>
         </div>
+    </div>
     )
 }

@@ -7,8 +7,24 @@ export async function getSchedule(props: {
     search?: string;
     page?: number,
     limit?: number,
+    preVendorId?: string;
+    vendorId?: string;
+    cityId?: string;
+    cityPlaceId?: string;
+    startDate?: string;
+    endDate?: string;
 }) {
-    const { search, page = 1, limit = 10 } = props;
+    const {
+      search,
+      page = 1,
+      limit = 10,
+      preVendorId,
+      vendorId,
+      cityId,
+      cityPlaceId,
+      startDate,
+      endDate,
+    } = props;
 
     const supabase = await createServerSupabaseClient();
 
@@ -17,8 +33,16 @@ export async function getSchedule(props: {
 
     let query = supabase.from("schedule").select("*, preVendor:preVendorId(*), vendor:vendorId(*), city(*), cityPlace:espacos_eventos(*)", { count: "exact" });
 
-    if (search) {
-      query = query.or(`clientName.ilike.%${search}%,clientPhone.ilike.%${search}%`)
+    if (search) query = query.or(`clientName.ilike.%${search}%,clientPhone.ilike.%${search}%`)
+    if (preVendorId) query = query.eq("preVendorId", preVendorId);
+    if (vendorId) query = query.eq("vendorId", vendorId);
+    if (cityId) query = query.eq("cityId", cityId);
+    if (cityPlaceId) query = query.eq("cityPlaceId", cityPlaceId);
+    if (startDate && endDate) {
+      query = query.gte("date", startDate).lte("date", endDate);
+    } else if (startDate || endDate) {
+      const date = startDate || endDate;
+      query = query.eq("date", date);
     }
 
     const { data, error, count } = await query.range(from, to);
