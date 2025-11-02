@@ -357,7 +357,9 @@ export default function AvailabilityPage() {
                                         />
                                       </PopoverTrigger>
                                       <PopoverContent className="flex flex-col gap-2 text-sm max-h-64 overflow-y-auto">
-                                        {s.availabilityPriority.map((ap) => (
+                                        {s.availabilityPriority
+                                          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                                          .map((ap) => (
                                           <div key={ap.id} className="flex flex-row items-center justify-between gap-4">
                                             <div>
                                               <p>{ap.user.nome}</p>
