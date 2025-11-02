@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Schedule } from "../agendamentos/types/schedule";
 import { ScheduleDeleteDialog } from "../agendamentos/components/schedule-delete-dialog";
+import { City } from "../cidades/types/city";
 
 export default function AvailabilityPage() {
   const now = new Date();
@@ -26,7 +27,7 @@ export default function AvailabilityPage() {
   const sevenDaysAfter = new Date(new Date(now).setDate(now.getDate() + 7));
   const [startDate, setStartDate] = useState<Date>(threeDaysAgo);
   const [endDate, setEndDate] = useState<Date>(sevenDaysAfter);
-  const [cityId, setCityId] = useState<string>();
+  const [city, setCity] = useState<City>();
   const [cities, setCities] = useState<{ id: string; name: string; color: string;}[]>([]);
   const [vendors, setVendors] = useState([]);
   const [dialogData, setDialogData] = useState<Availability | null>(null);
@@ -35,6 +36,8 @@ export default function AvailabilityPage() {
   const [deleteScheduleData, setScheduleDeleteData] = useState<Schedule | null>(null);
   const [schedulePopover, setSchedulePopover] = useState<string>();
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
+
+  const cityId = useMemo(() => city?.id, [city]);
 
   const dateDiff = useMemo(() => {
     const start = new Date(startDate);
@@ -65,7 +68,12 @@ export default function AvailabilityPage() {
       refreshInterval: 0,
     }
   )
-  console.log(events, eventsError, eventsLoading);
+
+  const filteredEvents = useMemo(() => {
+    let result = events ?? [];
+    if (city?.name) result = result.filter((r) => r["Cidade"].toLowerCase().includes(city.name.toLowerCase()));
+    return result;
+  }, [events, city])
 
   const { data: availabilities, isLoading, mutate } = useSWR(
     ["availability", startDate, endDate],
@@ -133,8 +141,8 @@ export default function AvailabilityPage() {
         <div className="flex flex-col gap-2 w-full md:w-1/4">
           <Label>Cidade</Label>
           <div className="flex flex-row items-center gap-2">
-            <CitySelect value={cityId} onSelect={(city) => setCityId(city.id)} />
-            {cityId && <X className="transition-all cursor-pointer hover:opacity-75" onClick={() => setCityId("")}/>}
+            <CitySelect value={cityId} onSelect={setCity} />
+            {cityId && <X className="transition-all cursor-pointer hover:opacity-75" onClick={() => setCity(undefined)}/>}
           </div>
         </div>
         <div className="flex flex-col gap-2 w-full md:w-1/4">
@@ -144,14 +152,20 @@ export default function AvailabilityPage() {
       </div>
 
       <div className="flex flex-row items-center gap-2">
-        {cities.map((city) => {
-          if (cityId && city.id !== cityId) return null;
-          return (
-            <div key={city.id} className={`${city.color} border rounded-md px-2 py-0.5 text-sm`}>
-              {city.name}
-            </div>
-          );
-        })}
+        {city ? (
+          <div key={city.id} className={`${getColor(city.color)} border rounded-md px-2 py-0.5 text-sm`}>
+            {city.name}
+          </div>
+        ) : (
+          cities.map((city) => {
+            if (cityId && city.id !== cityId) return null;
+            return (
+              <div key={city.id} className={`${city.color} border rounded-md px-2 py-0.5 text-sm`}>
+                {city.name}
+              </div>
+            );
+          })
+        )}
       </div>
 
       {isLoading ? (
@@ -180,7 +194,7 @@ export default function AvailabilityPage() {
                 d.setDate(d.getDate() + i);
                 const dateStr = d.toISOString().split("T")[0];
                 const dateStrBr = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-                const eventsOnDate = events?.filter((event) => event["Data Realização"] === dateStrBr);
+                const eventsOnDate = filteredEvents?.filter((event) => event["Data Realização"] === dateStrBr);
                 return (
                   <TableRow key={dateStr}>
                     <TableCell className="border text-right">{dateStrBr}</TableCell>
