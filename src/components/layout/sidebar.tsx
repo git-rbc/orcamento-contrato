@@ -34,7 +34,12 @@ import {
   TrendingUp,
   MessageSquare,
   List,
-  CalendarDays
+  CalendarDays,
+  Briefcase,
+  Map,
+  MapPin,
+  SquareUserRound,
+  CalendarSearch
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -111,7 +116,21 @@ const AVAILABLE_MENUS: MenuItem[] = [
         href: '/dashboard/agendamento/performance',
         icon: 'TrendingUp',
         description: 'Rankings (Geral, Online, Presencial, 10 dias)'
-      }
+      },
+      {
+        title: 'Disponibilidade 2',
+        slug: 'schedule-availability',
+        href: '/dashboard/agendamento/disponibilidade-2',
+        icon: 'Clock',
+        description: 'Disponibilidade dos vendedores por cidade'
+      },
+      {
+        title: 'Agendamentos',
+        slug: 'schedules',
+        href: '/dashboard/agendamento/agendamentos',
+        icon: 'CalendarSearch',
+        description: 'Agendamentos criados'
+      },
     ]
   },
   {
@@ -224,7 +243,14 @@ const AVAILABLE_MENUS: MenuItem[] = [
         description: 'Gestão de usuários'
       },
       {
-        title: 'Espaços de Eventos',
+        title: 'Cidades de Eventos',
+        slug: 'schedule-city',
+        href: '/dashboard/agendamento/cidades',
+        icon: 'Map',
+        description: 'Cadastro de cidades'
+      },
+      {
+        title: 'Espaços de Cidades',
         slug: 'espacos-eventos',
         href: '/dashboard/espacos-eventos',
         icon: 'Building2',
@@ -273,13 +299,18 @@ const iconMap: Record<string, any> = {
   Tag,
   Calendar,
   Clock,
+  CalendarSearch,
   Ban,
   BarChart3,
   Timer,
   TrendingUp,
   MessageSquare,
   List,
-  CalendarDays
+  CalendarDays,
+  Briefcase,
+  Map,
+  MapPin,
+  SquareUserRound,
 };
 
 // Componente para renderizar itens de menu (incluindo submenus)
@@ -374,10 +405,10 @@ function MenuItemComponent({
                     }`}
                     title={child.description}
                   >
-                                         {(() => {
-                       const ChildIcon = iconMap[child.icon] || Settings;
-                       return <ChildIcon className="h-4 w-4 flex-shrink-0" />;
-                     })()}
+                  {(() => {
+                    const ChildIcon = iconMap[child.icon] || Settings;
+                    return <ChildIcon className="h-4 w-4 flex-shrink-0" />;
+                  })()}
                     <div className="flex-1 min-w-0">
                       <span className="text-sm font-medium">{child.title}</span>
                     </div>

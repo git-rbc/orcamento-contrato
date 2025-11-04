@@ -94,6 +94,7 @@ export async function PATCH(
       .update({
         nome: body.nome,
         cidade: body.cidade,
+        cityId: body.cityId,
         capacidade_maxima: body.capacidade_maxima,
         descricao: body.descricao,
         tem_espaco_kids: body.tem_espaco_kids,

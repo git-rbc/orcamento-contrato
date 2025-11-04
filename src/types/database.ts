@@ -451,6 +451,7 @@ export interface EspacoEvento {
   id: string;
   nome: string;
   cidade: string;
+  cityId: string;
   capacidade_maxima: number;
   descricao?: string | null;
   tem_espaco_kids: boolean;
@@ -505,6 +506,7 @@ export interface CreateEspacoEventoDTO {
 export interface UpdateEspacoEventoDTO {
   nome?: string;
   cidade?: string;
+  cityId?: string;
   capacidade_maxima?: number;
   descricao?: string;
   tem_espaco_kids?: boolean;

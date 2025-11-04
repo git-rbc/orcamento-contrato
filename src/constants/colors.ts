@@ -1,0 +1,1 @@
+export const colors = ["green", "blue", "yellow", "purple", "indigo", "teal", "orange", "amber", "lime", "emerald", "cyan", "sky", "violet", "fuchsia", "pink", "rose"]

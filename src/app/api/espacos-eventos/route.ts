@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Validações básicas
-    if (!body.nome || !body.cidade || !body.capacidade_maxima) {
+    if (!body.nome || !body.cidade || !body.cityId || !body.capacidade_maxima) {
       return NextResponse.json(
         { error: 'Nome, cidade e capacidade máxima são obrigatórios' },
         { status: 400 }
@@ -139,6 +139,7 @@ export async function POST(request: NextRequest) {
       .insert({
         nome: body.nome,
         cidade: body.cidade,
+        cityId: body.cityId,
         capacidade_maxima: body.capacidade_maxima,
         descricao: body.descricao || null,
         tem_espaco_kids: body.tem_espaco_kids !== false,

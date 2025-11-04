@@ -16,10 +16,12 @@ import { ArrowLeft, Building2, Save, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { LayoutsManager } from '@/components/espacos-eventos/layouts-manager';
 import { toast } from 'sonner';
+import { CitySelect } from '@/components/city-select';
 
 interface FormData {
   nome: string;
   cidade: string;
+  cityId: string;
   capacidade_maxima: string;
   descricao: string;
   tem_espaco_kids: boolean;
@@ -44,6 +46,7 @@ export default function EditarEspacoEventoPage() {
   const [formData, setFormData] = useState<FormData>({
     nome: '',
     cidade: '',
+    cityId: '',
     capacidade_maxima: '',
     descricao: '',
     tem_espaco_kids: true,
@@ -64,7 +67,7 @@ export default function EditarEspacoEventoPage() {
         const result = await response.json();
         setFormData(prev => ({
           ...prev,
-          layouts: result.data.map((l: EspacoEventoLayout) => ({
+          layouts: result.data?.map((l: EspacoEventoLayout) => ({
             layout: l.layout,
             capacidade: l.capacidade,
             pavimento: l.pavimento,
@@ -88,6 +91,7 @@ export default function EditarEspacoEventoPage() {
             setFormData({
               nome: espacoData.nome,
               cidade: espacoData.cidade,
+              cityId: espacoData.cityId,
               capacidade_maxima: espacoData.capacidade_maxima.toString(),
               descricao: espacoData.descricao || '',
               tem_espaco_kids: espacoData.tem_espaco_kids,
@@ -132,6 +136,7 @@ export default function EditarEspacoEventoPage() {
       const result = await updateEspaco(params.id as string, {
         nome: formData.nome,
         cidade: formData.cidade,
+        cityId: formData.cityId,
         capacidade_maxima: parseInt(formData.capacidade_maxima),
         descricao: formData.descricao,
         tem_espaco_kids: formData.tem_espaco_kids,
@@ -194,15 +199,6 @@ export default function EditarEspacoEventoPage() {
     'Rustico',
     'Moderno',
     'Clássico'
-  ];
-
-  const cidades = [
-    'Itapema',
-    'Nova Veneza',
-    'Siderópolis',
-    'Blumenau',
-    'Joinville',
-    'Florianópolis'
   ];
 
   if (loadingData) {
@@ -279,21 +275,7 @@ export default function EditarEspacoEventoPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="cidade">Cidade *</Label>
-                <Select 
-                  value={formData.cidade} 
-                  onValueChange={(value) => handleInputChange('cidade', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a cidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {cidades.map((cidade) => (
-                      <SelectItem key={cidade} value={cidade}>
-                        {cidade}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <CitySelect value={formData.cityId} onSelect={(city) => setFormData((p) => ({...p, cidade: city.name, cityId: city.id}))}/>
               </div>
             </div>
 
