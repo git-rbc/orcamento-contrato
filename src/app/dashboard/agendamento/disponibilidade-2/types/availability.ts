@@ -5,6 +5,7 @@ export interface AvailabilityPriority {
   id: string
   availabilityId: string
   userId: string
+  comment: string | null;
   createdAt: string
   updatedAt: string
   user?: any;
