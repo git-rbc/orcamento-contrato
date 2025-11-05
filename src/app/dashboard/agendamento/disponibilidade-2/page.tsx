@@ -4,7 +4,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { VendorMultiSelect } from "@/components/vendor-multi-select";
 import { useState, useMemo, useEffect } from "react";
-import { createAvailabilityPriority, fetchAvailabilities } from "./utils/actions";
+import { fetchAvailabilities } from "./utils/actions";
 import { SlotDialog } from "./components/slot-dialog";
 import { SlotDeleteDialog } from "./components/slot-delete-dialog";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,9 @@ import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
 import { Schedule } from "../agendamentos/types/schedule";
 import { ScheduleDeleteDialog } from "../agendamentos/components/schedule-delete-dialog";
 import { City } from "../cidades/types/city";
-import { createClient } from "@/lib/supabase";
-import { toast } from "sonner";
 import { PriorityDeleteDialog } from "./components/priority-delete-dialog";
 import { useUser } from "@/hooks/useUser";
+import { PriorityDialog } from "./components/priority-dialog";
 
 export default function AvailabilityPage() {
   const now = new Date();
@@ -42,6 +41,7 @@ export default function AvailabilityPage() {
   const [scheduleData, setScheduleData] = useState<Schedule | null>(null);
   const [deleteScheduleData, setScheduleDeleteData] = useState<Schedule | null>(null);
   const [schedulePopover, setSchedulePopover] = useState<string>();
+  const [priorityData, setPriorityData] = useState<{ availabilityId: string } | null>(null);
   const [deletePriorityData, setDeletePriorityData] = useState<{ priorityId: string } | null>(null);
   const [priorityPopover, setPriorityPopover] = useState<string>();
   const [selectedCell, setSelectedCell] = useState<string | null>(null);
@@ -96,21 +96,6 @@ export default function AvailabilityPage() {
   }, [availabilities, cityId]);
 
   const { handleKeyDown } = useCopyPasteSlots(cityId, mutate);
-
-  const handleRequestPriority = async (availabilityId: string) => {
-    const supabase = createClient();
-    const user = await supabase.auth.getUser();
-
-    const { error } = await createAvailabilityPriority({ availabilityId, userId: user.data.user.id });
-
-    if (!error) {
-      toast.success("Reserva efetuada com sucesso!");
-      mutate();
-      return;
-    }
-
-    toast.error(error.message);
-  }
 
   const getColor = (color?: string) => {
     let base = color;
@@ -236,8 +221,7 @@ export default function AvailabilityPage() {
                             <PopoverContent className="items-center max-h-64 max-w-64 p-0 overflow-y-auto">
                               {eventsOnDate.map((event, index) => (
                                 <p key={index} className={`${index > 0 ? "border-t" : ""} py-1 px-2 text-center`}>
-                                  {event["Local do Evento"]}
-                                  {event["Cerimônia Externa - Canto da Lagoa"] ? ` (${event["Cerimônia Externa - Canto da Lagoa"]})` : ""}
+                                  {event["Resumo"]}
                                 </p>
                               ))}
                             </PopoverContent>
@@ -312,7 +296,7 @@ export default function AvailabilityPage() {
                                         Remover Disponibilidade
                                       </ContextMenuItem>
                                       <ContextMenuSeparator/>
-                                      <ContextMenuItem onClick={() => handleRequestPriority(s.id)} disabled={schedule !== undefined}>
+                                      <ContextMenuItem onClick={() => setTimeout(() => setPriorityData({ availabilityId: s.id }), 300)} disabled={schedule !== undefined}>
                                         Reservar
                                       </ContextMenuItem>
                                       <ContextMenuItem onClick={() => setTimeout(() => setPriorityPopover(s.id), 300)} disabled={!hasPriority}>
@@ -362,7 +346,8 @@ export default function AvailabilityPage() {
                                           .map((ap) => (
                                           <div key={ap.id} className="flex flex-row items-center justify-between gap-4">
                                             <div>
-                                              <p>{ap.user.nome}</p>
+                                              <p className="font-semibold underline">{ap.user.nome}</p>
+                                              {ap.comment && <p className="whitespace-break-spaces text-xs">{ap.comment}</p>}
                                               <p className="text-gray-400 text-xs">{new Date(ap.createdAt).toLocaleDateString()} {new Date(ap.createdAt).toLocaleTimeString()}</p>
                                             </div>
                                             {user?.id === ap.userId && (
@@ -448,12 +433,21 @@ export default function AvailabilityPage() {
             />
           )}
 
+          {priorityData && (
+            <PriorityDialog
+              open={!!priorityData}
+              onClose={() => setPriorityData(null)}
+              onCreate={mutate}
+              availabilityId={priorityData.availabilityId}
+            />
+          )}
+
           {deletePriorityData && (
             <PriorityDeleteDialog
               open={!!deletePriorityData}
               onClose={() => setDeletePriorityData(null)}
               priorityId={deletePriorityData.priorityId}
-              onDeleted={mutate}
+              onDelete={mutate}
             />
           )}
         </div>

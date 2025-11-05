@@ -8,17 +8,17 @@ type DeletePriorityDialogProps = {
     open: boolean;
     onClose: () => void;
     priorityId: string;
-    onDeleted: () => void;
+    onDelete: () => void;
 };
 
-export function PriorityDeleteDialog({ open, onClose, priorityId, onDeleted }: DeletePriorityDialogProps) {
+export function PriorityDeleteDialog({ open, onClose, priorityId, onDelete }: DeletePriorityDialogProps) {
 
     const handleDelete = async () => {
         const { error } = await deleteAvailabilityPriority({ id: priorityId});
 
         if(!error){
             toast.success("Reserva removida com sucesso!");
-            onDeleted();
+            onDelete();
             onClose();
             return;
         }

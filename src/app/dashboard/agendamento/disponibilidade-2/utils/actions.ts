@@ -143,6 +143,7 @@ export async function deleteAvailability(props: {
 export async function createAvailabilityPriority(props: {
   availabilityId: string;
   userId: string;
+  comment: string;
 }) {
   const supabase = await createServerSupabaseClient()
 
