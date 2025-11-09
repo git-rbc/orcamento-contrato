@@ -11,9 +11,10 @@ import { Input } from "./ui/input";
 type VendorMultiSelectProps = {
   value: any[];
   onSelect: (vendors: any[]) => void;
+  showAll?: boolean;
 };
 
-const VendorMultiSelect: FC<VendorMultiSelectProps> = ({ value, onSelect }) => {
+const VendorMultiSelect: FC<VendorMultiSelectProps> = ({ value, onSelect, showAll }) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -63,8 +64,14 @@ const VendorMultiSelect: FC<VendorMultiSelectProps> = ({ value, onSelect }) => {
   }, [search]);
 
   const toggleVendor = (vendor: any) => {
-    const alreadySelected = value.some((v) => v.id === vendor.id);
-    const newSelection = alreadySelected ? value.filter((v) => v.id !== vendor.id) : [...value, vendor];
+    let newSelection = [];
+    if (vendor === "all") {
+      const allSelected = value.length === vendors.length;
+      newSelection = allSelected ? [] : vendors;
+    } else {
+      const alreadySelected = value.some((v) => v.id === vendor.id);
+      newSelection = alreadySelected ? value.filter((v) => v.id !== vendor.id) : [...value, vendor];
+    }
     onSelect(vendors.filter((vendor) => newSelection.some((v) => v.id === vendor.id)));
   };
 
@@ -111,6 +118,27 @@ const VendorMultiSelect: FC<VendorMultiSelectProps> = ({ value, onSelect }) => {
                 Nenhum resultado encontrado
               </p>
             )
+          )}
+
+          {showAll && !debouncedSearch && (
+            <Button
+              variant="ghost"
+              value={"all"}
+              className="relative justify-start w-full py-1.5 pl-2 pr-8 !h-auto"
+              onClick={() => toggleVendor("all")}
+            >
+              Todos os vendedores
+              <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
+                <Check
+                  className={cn(
+                    "h-4 w-4",
+                    value.length === vendors.length
+                      ? "opacity-100"
+                      : "opacity-0"
+                  )}
+                />
+              </span>
+            </Button>
           )}
 
           {vendors.map((vendor: any) => (

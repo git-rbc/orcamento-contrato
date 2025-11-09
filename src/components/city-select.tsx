@@ -11,9 +11,10 @@ type CitySelectProps = {
   value: string;
   onSelect: (city: any) => void;
   field?: ControllerRenderProps;
+  showAll?: boolean;
 }
 
-const CitySelect: FC<CitySelectProps> = ({ ref, value, onSelect, field }) => {
+const CitySelect: FC<CitySelectProps> = ({ ref, value, onSelect, field, showAll }) => {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -67,7 +68,8 @@ const CitySelect: FC<CitySelectProps> = ({ ref, value, onSelect, field }) => {
       {...field}
       value={value}
       onValueChange={(value) => {
-        const selectedCity = cities.find((c) => c.id === value);
+        let selectedCity = cities.find((c) => c.id === value);
+        if (!selectedCity && value === "all") selectedCity = { id: value };
         onSelect(selectedCity);
       }}
     >
@@ -89,6 +91,10 @@ const CitySelect: FC<CitySelectProps> = ({ ref, value, onSelect, field }) => {
             ) : (
               <p className="text-center text-sm text-muted-foreground p-1">Nenhum resultado encontrado</p>
             )
+          )}
+
+          {showAll && !debouncedSearch && (
+            <SelectItem value="all">Todas as cidades</SelectItem>
           )}
 
           {cities.map((city: any) => (

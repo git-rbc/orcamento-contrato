@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { createAvailability } from "./actions";
 import type { Availability } from "../types/availability";
 
-type CopiedSlot = Pick<Availability, "startHour" | "endHour">;
+type CopiedSlot = Pick<Availability, "cityId" | "startHour" | "endHour">;
 
 export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
   const [copiedSlots, setCopiedSlots] = useState<CopiedSlot[] | null>(null);
@@ -23,6 +23,7 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
     const parsed = JSON.parse(slots);
     if (Array.isArray(parsed) && parsed.length > 0) {
       const formatted = parsed.map((s: any) => ({
+        cityId: s.cityId,
         startHour: s.startHour,
         endHour: s.endHour,
       }));
@@ -37,11 +38,6 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
   const handlePaste = async (selected: HTMLElement | null) => {
     if (!copiedSlots || !copiedSlots.length) {
       toast.error("Nenhuma disponibilidade copiada para colar.");
-      return;
-    }
-
-    if (!cityId) {
-      toast.error("Selecione uma cidade antes de colar.");
       return;
     }
 
@@ -68,7 +64,7 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
     let anySuccess = false;
     for (const s of copiedSlots) {
       const { error } = await createAvailability({
-        cityId,
+        cityId: s.cityId,
         vendorId,
         date,
         startHour: s.startHour,

@@ -25,7 +25,7 @@ export function ScheduleDialog({
   defaultOpen,
   onClose,
 } : {
-  schedule?: Schedule;
+  schedule?: Partial<Schedule>;
   customLabel?: string;
   onSuccess?: () => void;
   defaultOpen?: boolean;
@@ -95,12 +95,29 @@ export function ScheduleDialog({
   }
 
   useEffect(() => {
-    form.setValue("availabilityId", "");
-  }, [vendorId, cityId, date]);
+    let availabilityId = "";
+    const parsedDate = date?.toISOString().split("T")[0];
+    if (
+      schedule?.vendorId === vendorId &&
+      schedule?.cityId === cityId &&
+      schedule?.date === parsedDate &&
+      schedule?.availabilityId
+    ) {
+      availabilityId =schedule.availabilityId;
+    }
+    form.setValue("availabilityId", availabilityId);
+  }, [schedule, vendorId, cityId, date]);
 
   useEffect(() => {
-    form.setValue("cityPlaceId", "");
-  }, [cityId]);
+    let cityPlaceId = "";
+    if (
+      schedule?.cityId === cityId &&
+      schedule?.cityPlaceId
+    ) {
+      cityPlaceId = schedule.cityPlaceId;
+    }
+    form.setValue("cityPlaceId", cityPlaceId);
+  }, [schedule, cityId]);
 
   return (
     <Dialog

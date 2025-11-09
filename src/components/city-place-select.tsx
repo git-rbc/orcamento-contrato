@@ -13,9 +13,10 @@ type CityPlaceSelectProps = {
     onSelect: (cityPlace: any) => void;
     field?: ControllerRenderProps;
     dynamic?: boolean;
+    showAll?: boolean;
 }
 
-const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ cityId, ref, value, onSelect, field, dynamic }) => {
+const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ cityId, ref, value, onSelect, field, dynamic, showAll }) => {
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
 
@@ -74,7 +75,8 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ cityId, ref, value, onSelec
             {...field}
             value={value}
             onValueChange={(value) => {
-                const selectedCityPlace = cityPlaces.find((c) => c.id === value);
+                let selectedCityPlace = cityPlaces.find((c) => c.id === value);
+                if (!selectedCityPlace && value === "all") selectedCityPlace = { id: value };
                 onSelect(selectedCityPlace);
             }}
         >
@@ -96,6 +98,10 @@ const CityPlaceSelect: FC<CityPlaceSelectProps> = ({ cityId, ref, value, onSelec
                         ) : (
                         <p className="text-center text-sm text-muted-foreground p-1">Nenhum resultado encontrado</p>
                         )
+                    )}
+
+                    {showAll && !debouncedSearch && (
+                        <SelectItem value="all">Todos os locais</SelectItem>
                     )}
 
                     {cityPlaces.map((cityPlace: any) => (

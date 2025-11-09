@@ -75,52 +75,52 @@ const AVAILABLE_MENUS: MenuItem[] = [
     icon: 'Calendar',
     description: 'Sistema de agendamento de reuniões',
     children: [
-      {
-        title: 'Reuniões',
-        slug: 'agendamento-reunioes',
-        href: '/dashboard/agendamento/reunioes',
-        icon: 'Users',
-        description: 'Gestão de reuniões'
-      },
-      {
-        title: 'Agenda Integrada',
-        slug: 'agendamento-agenda-integrada',
-        href: '/dashboard/agendamento/agenda-integrada',
-        icon: 'CalendarDays',
-        description: 'Visualização unificada com reuniões, reservas e fila de espera'
-      },
+      // {
+      //   title: 'Reuniões',
+      //   slug: 'agendamento-reunioes',
+      //   href: '/dashboard/agendamento/reunioes',
+      //   icon: 'Users',
+      //   description: 'Gestão de reuniões'
+      // },
+      // {
+      //   title: 'Agenda Integrada',
+      //   slug: 'agendamento-agenda-integrada',
+      //   href: '/dashboard/agendamento/agenda-integrada',
+      //   icon: 'CalendarDays',
+      //   description: 'Visualização unificada com reuniões, reservas e fila de espera'
+      // },
+      // {
+      //   title: 'Disponibilidade',
+      //   slug: 'agendamento-disponibilidade',
+      //   href: '/dashboard/agendamento/disponibilidade',
+      //   icon: 'Clock',
+      //   description: 'Configurar horários disponíveis'
+      // },
+      // {
+      //   title: 'Bloqueios',
+      //   slug: 'agendamento-bloqueios',
+      //   href: '/dashboard/agendamento/bloqueios',
+      //   icon: 'Ban',
+      //   description: 'Gerenciar bloqueios de horários'
+      // },
+      // {
+      //   title: 'Dashboard',
+      //   slug: 'agendamento-dashboard',
+      //   href: '/dashboard/agendamento/dashboard',
+      //   icon: 'BarChart3',
+      //   description: 'Métricas de agendamento'
+      // },
+      // {
+      //   title: 'Performance Vendedores',
+      //   slug: 'agendamento-performance',
+      //   href: '/dashboard/agendamento/performance',
+      //   icon: 'TrendingUp',
+      //   description: 'Rankings (Geral, Online, Presencial, 10 dias)'
+      // },
       {
         title: 'Disponibilidade',
-        slug: 'agendamento-disponibilidade',
-        href: '/dashboard/agendamento/disponibilidade',
-        icon: 'Clock',
-        description: 'Configurar horários disponíveis'
-      },
-      {
-        title: 'Bloqueios',
-        slug: 'agendamento-bloqueios',
-        href: '/dashboard/agendamento/bloqueios',
-        icon: 'Ban',
-        description: 'Gerenciar bloqueios de horários'
-      },
-      {
-        title: 'Dashboard',
-        slug: 'agendamento-dashboard',
-        href: '/dashboard/agendamento/dashboard',
-        icon: 'BarChart3',
-        description: 'Métricas de agendamento'
-      },
-      {
-        title: 'Performance Vendedores',
-        slug: 'agendamento-performance',
-        href: '/dashboard/agendamento/performance',
-        icon: 'TrendingUp',
-        description: 'Rankings (Geral, Online, Presencial, 10 dias)'
-      },
-      {
-        title: 'Disponibilidade 2',
         slug: 'schedule-availability',
-        href: '/dashboard/agendamento/disponibilidade-2',
+        href: '/dashboard/agendamento/disponibilidade',
         icon: 'Clock',
         description: 'Disponibilidade dos vendedores por cidade'
       },
