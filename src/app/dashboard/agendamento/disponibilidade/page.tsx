@@ -37,6 +37,7 @@ export default function AvailabilityPage() {
   const [city, setCity] = useState<City>();
   const [cityPlace, setCityPlace] = useState<any>();
   const [cities, setCities] = useState<{ id: string; name: string; color: string;}[]>([]);
+  const [cityPlaces, setCityPlaces] = useState<{ id: string; cityId: string; name: string; color: string;}[]>([]);
   const [vendors, setVendors] = useState([]);
   const [dialogData, setDialogData] = useState<Availability | null>(null);
   const [deleteData, setDeleteData] = useState<{ slotId: string } | null>(null);
@@ -87,6 +88,8 @@ export default function AvailabilityPage() {
     return result;
   }, [events, city])
 
+  const filteredCityPlaces = useMemo(() => cityPlaces.filter((c) => c.cityId === cityId), [cityPlaces, cityId]);
+
   const { data: availabilities, isLoading, mutate } = useSWR(
     ["availability", startDate, endDate],
     ([_, startDate, endDate]) => fetchAvailabilities({ startDate, endDate })
@@ -95,7 +98,7 @@ export default function AvailabilityPage() {
   const filteredAvailabilities = useMemo(() => {
     let result = availabilities ?? [];
     if (cityId && cityId !== "all") result = result.filter((r) => r.cityId === cityId);
-    if (cityPlaceId && cityPlaceId !== "all") result = result.filter((r) => r.schedule.some((s) => s.cityPlaceId === cityPlaceId));
+    if (cityPlaceId && cityPlaceId !== "all") result = result.filter((r) => r.cityPlaceId === cityPlaceId || r.schedule.some((s) => s.cityPlaceId === cityPlaceId));
     return result;
   }, [availabilities, cityId, cityPlaceId]);
 
@@ -106,6 +109,17 @@ export default function AvailabilityPage() {
     if (!base) base = colors[Math.floor(Math.random() * colors.length)];
     return `bg-${base}-100 text-${base}-800 border-${base}-300`;
   };
+
+  const hexToRgba = (hex: string, alpha: number) => {
+    const cleaned = hex.replace("#", "");
+    const bigint = parseInt(cleaned, 16);
+
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
 
   useEffect(() => {
     if (!availabilities) return;
@@ -127,6 +141,19 @@ export default function AvailabilityPage() {
       .map((c) => ({ id: c.id, name: c.name, color: getColor(c.color) }));
     setCities(() => {
       const unique = cities.filter(
+        (vendor, index, self) =>
+          index === self.findIndex((v) => v.id === vendor.id)
+      );
+
+      return unique;
+    });
+
+    const cityPlaces = availabilities
+      .flatMap((availability) => availability.cityPlace)
+      .filter((c) => !!c?.id)
+      .map((c) => ({ id: c.id, cityId: c.cityId, name: c.nome, color: c.cor }));
+    setCityPlaces(() => {
+      const unique = cityPlaces.filter(
         (vendor, index, self) =>
           index === self.findIndex((v) => v.id === vendor.id)
       );
@@ -174,17 +201,56 @@ export default function AvailabilityPage() {
         </div>
       </div>
 
-      <div className="flex flex-row items-center gap-2">
+      <div className="flex flex-wrap items-start gap-2">
         {city && city.id !== "all" ? (
-          <div key={city.id} className={`${getColor(city.color)} border rounded-md px-2 py-0.5 text-sm`}>
-            {city.name}
-          </div>
-        ) : (
-          cities.map((city) => (
-            <div key={city.id} className={`${city.color} border rounded-md px-2 py-0.5 text-sm`}>
+          <div className="flex flex-col gap-1 border border-dashed p-1 rounded-md max-w-[40%]">
+            <div className={`${getColor(city.color)} border rounded-md px-2 py-0.5 text-sm w-fit`}>
               {city.name}
             </div>
-          ))
+            {filteredCityPlaces.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {filteredCityPlaces.map((cityPlace) => (
+                  <div
+                    className="border rounded-md px-2 py-0.5 text-sm w-fit"
+                    style={{
+                      backgroundColor: cityPlace.color ? hexToRgba(cityPlace.color, 0.25) : undefined,
+                      border: cityPlace.color ? `1px solid ${hexToRgba(cityPlace.color, 0.5)}` : undefined,
+                      color: cityPlace.color ? hexToRgba(cityPlace.color, 1) : undefined,
+                    }}
+                  >
+                    {cityPlace.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          cities.map((city) => {
+            const filteredCityPlaces = cityPlaces.filter((c) => c.cityId === city.id);
+            return (
+              <div key={city.id} className="flex flex-col gap-1 border border-dashed p-1 rounded-md max-w-96">
+                <div className={`${city.color} border rounded-md px-2 py-0.5 text-sm w-fit`}>
+                  {city.name}
+                </div>
+                {filteredCityPlaces.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {filteredCityPlaces.map((cityPlace) => (
+                      <div
+                        className="border rounded-md px-2 py-0.5 text-sm w-fit"
+                        style={{
+                          backgroundColor: cityPlace.color ? hexToRgba(cityPlace.color, 0.25) : undefined,
+                          border: cityPlace.color ? `1px solid ${hexToRgba(cityPlace.color, 0.5)}` : undefined,
+                          color: cityPlace.color ? hexToRgba(cityPlace.color, 1) : undefined,
+                        }}
+                      >
+                        {cityPlace.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })
         )}
       </div>
 
@@ -247,7 +313,7 @@ export default function AvailabilityPage() {
                       
                       const cellId = v.id + "-" + dateStr;
                       const isSelected = selectedCell === cellId;
-                      const slotsToCopy = slots.map(s => ({ cityId: s.cityId, startHour: s.startHour, endHour: s.endHour }));
+                      const slotsToCopy = slots.map(s => ({ cityId: s.cityId, cityPlaceId: s.cityPlaceId, startHour: s.startHour, endHour: s.endHour }));
                       
                       return (
                         <TableCell 
@@ -265,6 +331,7 @@ export default function AvailabilityPage() {
                           <div className="flex flex-row items-center justify-center flex-wrap gap-1">
                             {slots.map((s) => {
                               const color = cities.find((c) => c.id === s.cityId)?.color;
+                              const cityPlaceColor = s.cityPlace?.cor;
                               const schedule = s.schedule?.[0];
                               const hasPriority = s.availabilityPriority && s.availabilityPriority.length > 0 && schedule === undefined;
                               return (
@@ -274,8 +341,13 @@ export default function AvailabilityPage() {
                                       <div
                                         className={
                                           "flex items-center gap-0.5 px-1 py-0.5 border rounded transition-all cursor-pointer select-none " +
-                                          (schedule ? `opacity-75 ${getColor("red")}` : `hover:opacity-75 ${color ?? ""}`)
+                                          (schedule ? `opacity-75 ${getColor("red")}` : `hover:opacity-75 ${cityPlaceColor ? "" : color ?? ""}`)
                                         }
+                                        style={{
+                                          backgroundColor: cityPlaceColor ? hexToRgba(cityPlaceColor, 0.25) : undefined,
+                                          border: cityPlaceColor ? `1px solid ${hexToRgba(cityPlaceColor, 0.5)}` : undefined,
+                                          color: cityPlaceColor ? hexToRgba(cityPlaceColor, 1) : undefined,
+                                        }}
                                         onClick={(ev) => {
                                           ev.stopPropagation();
                                           if (schedule) setSchedulePopover(s.id);
@@ -318,6 +390,7 @@ export default function AvailabilityPage() {
                                         onClick={() => setScheduleData({
                                           vendorId: s.vendorId,
                                           cityId: s.cityId,
+                                          cityPlaceId: s.cityPlaceId,
                                           availabilityId: s.id,
                                           date: s.date,
                                         })}
@@ -397,6 +470,7 @@ export default function AvailabilityPage() {
                                 setDialogData({
                                   id: "",
                                   cityId,
+                                  cityPlaceId: null,
                                   vendorId: v.id,
                                   date: dateStr,
                                   startHour: "",

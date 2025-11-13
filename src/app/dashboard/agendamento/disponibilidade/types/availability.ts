@@ -15,6 +15,7 @@ export interface Availability {
   id: string
   vendorId: string
   cityId: string
+  cityPlaceId: string | null
   date: string
   startHour: string
   endHour: string
@@ -22,6 +23,7 @@ export interface Availability {
   updatedAt: string
   vendor?: any
   city?: City
+  cityPlace?: any
   schedule?: Schedule[]
   availabilityPriority?: AvailabilityPriority[]
 }

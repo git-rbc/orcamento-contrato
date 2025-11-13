@@ -14,7 +14,7 @@ export async function fetchAvailabilities(props: {
   
   const { data, error } = await  supabase
     .from("availability")
-    .select("*, vendor: users(*), city(*), schedule(*, preVendor:preVendorId(*), vendor:vendorId(*), city(*), cityPlace:espacos_eventos(*)), availabilityPriority(*, user: users(*))")
+    .select("*, vendor: users(*), city(*), cityPlace:espacos_eventos(*), schedule(*, preVendor:preVendorId(*), vendor:vendorId(*), city(*), cityPlace:espacos_eventos(*)), availabilityPriority(*, user: users(*))")
     .gte("date", startIso)
     .lte("date", endIso)
     
@@ -87,6 +87,7 @@ async function validateAvailability(props: {
 
 export async function createAvailability(props: {
   cityId: string;
+  cityPlaceId: string | null;
   vendorId: string;
   date: string;
   startHour: string;
@@ -105,12 +106,13 @@ export async function createAvailability(props: {
 export async function updateAvailability(props: {
   id: string;
   cityId: string;
+  cityPlaceId: string | null;
   vendorId: string;
   date: string;
   startHour: string;
   endHour: string;
 }) {
-  const { id, cityId, startHour, endHour } = props;
+  const { id, cityId, cityPlaceId, startHour, endHour } = props;
 
   const supabase = await createServerSupabaseClient()
 
@@ -120,7 +122,7 @@ export async function updateAvailability(props: {
   const { error: validateError } = await validateAvailability(props);
   if (validateError) return { error: validateError };
 
-  const { error } = await supabase.from("availability").update({ cityId, startHour, endHour }).eq("id", id);
+  const { error } = await supabase.from("availability").update({ cityId, cityPlaceId, startHour, endHour }).eq("id", id);
 
   return { error };
 }

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { createAvailability } from "./actions";
 import type { Availability } from "../types/availability";
 
-type CopiedSlot = Pick<Availability, "cityId" | "startHour" | "endHour">;
+type CopiedSlot = Pick<Availability, "cityId" | "cityPlaceId" | "startHour" | "endHour">;
 
 export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
   const [copiedSlots, setCopiedSlots] = useState<CopiedSlot[] | null>(null);
@@ -24,6 +24,7 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
     if (Array.isArray(parsed) && parsed.length > 0) {
       const formatted = parsed.map((s: any) => ({
         cityId: s.cityId,
+        cityPlaceId: s.cityPlaceId,
         startHour: s.startHour,
         endHour: s.endHour,
       }));
@@ -65,6 +66,7 @@ export function useCopyPasteSlots(cityId?: string, onCreated?: () => void) {
     for (const s of copiedSlots) {
       const { error } = await createAvailability({
         cityId: s.cityId,
+        cityPlaceId: s.cityPlaceId,
         vendorId,
         date,
         startHour: s.startHour,

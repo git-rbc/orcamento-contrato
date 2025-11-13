@@ -12,6 +12,8 @@ import useSWR from "swr";
 import { createClient } from "@/lib/supabase";
 import { toast } from "sonner";
 import { CitySelect } from "@/components/city-select";
+import { CityPlaceSelect } from "@/components/city-place-select";
+import { X } from "lucide-react";
 
 type SlotDialogProps = {
   open: boolean;
@@ -28,6 +30,7 @@ export function SlotDialog({
 }: SlotDialogProps) {
   const formSchema = z.object({
     cityId: z.string({ message: "Selecione uma cidade" }).nonempty({ message: "Selecione uma cidade"}),
+    cityPlaceId: z.string().nullable(),
     startHour: z.string({ message: "Insira a hora de início"}).nonempty({ message: "Insira a hora de início"}),
     endHour: z.string({ message: "Insira a hora de fim"}).nonempty({ message: "Insira a hora de fim"}),
   });
@@ -37,10 +40,12 @@ export function SlotDialog({
     resolver: zodResolver(formSchema),
     defaultValues: {
       cityId: availability.cityId,
+      cityPlaceId: availability.cityPlaceId,
       startHour: availability.startHour,
       endHour: availability.endHour,
     }
   });
+  const cityIdWatch = form.watch("cityId");
 
   const getVendor = async (id: string) => {
     const supabase = createClient();
@@ -53,11 +58,11 @@ export function SlotDialog({
     ([_, vendorId]) => getVendor(vendorId),
   )
 
-  const onSubmit = async ({ cityId, startHour, endHour}: formSchemaType) => {
+  const onSubmit = async ({ cityId, cityPlaceId, startHour, endHour}: formSchemaType) => {
     const { id, vendorId, date } = availability;
     const { error } = id
-      ? await updateAvailability({ id, cityId, vendorId, date, startHour, endHour })
-      : await createAvailability({ cityId, vendorId, date, startHour, endHour });
+      ? await updateAvailability({ id, cityId, cityPlaceId, vendorId, date, startHour, endHour })
+      : await createAvailability({ cityId, cityPlaceId, vendorId, date, startHour, endHour });
 
     if (!error) {
       if (!availability.id) form.reset();
@@ -110,6 +115,22 @@ export function SlotDialog({
                   <FormLabel>Cidade</FormLabel>
                   <FormControl>
                     <CitySelect value={field.value} onSelect={(city) => field.onChange(city.id)} field={field}/>
+                  </FormControl>
+                  <FormMessage/>
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="cityPlaceId"
+              render={({field}) => (
+                <FormItem>
+                  <FormLabel>Local</FormLabel>
+                  <FormControl>
+                    <div className="flex flex-row items-center gap-2">
+                      <CityPlaceSelect cityId={cityIdWatch} value={field.value} onSelect={(cityPlace) => field.onChange(cityPlace?.id ?? null)} field={field} dynamic/>
+                      {field.value && <X className="transition-all cursor-pointer hover:opacity-75" onClick={() => field.onChange(null)}/>}
+                    </div>
                   </FormControl>
                   <FormMessage/>
                 </FormItem>
